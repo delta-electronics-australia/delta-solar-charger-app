@@ -1,0 +1,183 @@
+import 'package:flutter/material.dart';
+import 'dart:io' show Platform;
+import 'dart:async';
+import 'package:firebase_database/firebase_database.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:smart_charging_app/firebase_transfer.dart';
+import 'package:smart_charging_app/change_settings.dart';
+import 'package:smart_charging_app/liveDataStream.dart';
+import 'package:charts_flutter/flutter.dart' as charts;
+import 'package:intl/intl.dart';
+
+Future<FirebaseApp> main() async {
+  final FirebaseApp app = await FirebaseApp.configure(
+    name: 'smart-charging-app',
+    options: Platform.isIOS
+        ? const FirebaseOptions(
+            googleAppID: '1:297855924061:ios:c6de2b69b03a5be8',
+            gcmSenderID: '297855924061',
+            databaseURL: 'https://smart-charging-app.firebaseio.com/',
+          )
+        : const FirebaseOptions(
+            googleAppID: '1:896921007938:android:2be6175bd778747f',
+            apiKey: 'AIzaSyCaxTOBofd7qrnbas5gGsZcuvy_zNSi_ik',
+            databaseURL: 'https://smart-charging-app.firebaseio.com/',
+          ),
+  );
+  return app;
+}
+
+class SolarChargerSettings extends StatefulWidget {
+  @override
+  _SolarChargerSettingsState createState() => _SolarChargerSettingsState();
+}
+
+class _SolarChargerSettingsState extends State<SolarChargerSettings> {
+  FirebaseDatabase database;
+
+  final _headingFont = const TextStyle(fontSize: 30.0);
+  Map<String, String> chargingModeOptions = {
+    'Standalone: PV with Battery Backup': 'PV_with_BT',
+    'Standalone: Maximise EV Charge Rate': 'MAX_CHARGE_STANDALONE',
+    'BETA: PV Standalone without BT': 'PV_no_BT',
+    'Grid Connected: Maximise EV Charge Rate': 'MAX_CHARGE_GRID'
+  };
+  List<String> bufferAggressivenessOptions = [
+    'Aggressive',
+    'Balanced',
+    'Conservative',
+    'Ultra Conservative'
+  ];
+
+  String singleChargingMode;
+  String bufferAggroMode = 'Aggressive';
+
+  StreamSubscription _singleChargingModeSubscription;
+  StreamSubscription _bufferAggroModeSubscription;
+
+  @override
+  Widget build(BuildContext context) {
+    return new Scaffold(
+      appBar: new AppBar(title: const Text('Delta Solar Charger Settings')),
+      body: new Center(
+          child: new ListView(
+        children: <Widget>[
+//          new Padding(padding: const EdgeInsets.only(top: 15))
+          new Card(
+              child: singleChargingMode != null
+                  ? new Column(
+                      children: <Widget>[
+                        new Text(
+                          'Select Charging Mode',
+                          style: _headingFont,
+                        ),
+                        new DropdownButton(
+                          // Need a List<DropdownMenu<String>>
+                          items: chargingModeOptions.keys
+                              .toList()
+                              .map((String chargingMode) {
+                            return new DropdownMenuItem<String>(
+                                child: Text(chargingMode),
+                                value: chargingModeOptions[chargingMode]);
+                          }).toList(),
+                          onChanged: chargingModeChanged,
+                          value: singleChargingMode,
+                        )
+                      ],
+                      mainAxisAlignment: MainAxisAlignment.center,
+                    )
+                  : new Center(
+                      child: const Center(
+                          child: const CircularProgressIndicator()))),
+
+//          new Card(
+//              child: bufferAggroMode == null
+//                  ? new Column(
+//                      children: <Widget>[
+//                        new Text(
+//                          'Select Buffer Aggresiveness',
+//                          style: _headingFont,
+//                        ),
+//                        new Text(
+//                          'How aggressive should we be in using the battery? The more aggressive, the more the battery will be used in standalone mode',
+//                        ),
+//                        new DropdownButton(
+//                          items: bufferAggressivenessOptions
+//                              .map((String bufferAggressiveness) {
+//                            return new DropdownMenuItem<String>(
+//                                child: Text(bufferAggressiveness),
+//                                value: bufferAggressiveness);
+//                          }).toList(),
+//                          onChanged: chargingModeChanged,
+//                          value: bufferAggroMode,
+//                        ),
+//                        new Text(
+//                            'Note: This mode will only work during Standalone: PV with Battery Backup mode'),
+//                      ],
+//                    )
+//                  : new Center(
+//                      child: const Center(
+//                          child: const CircularProgressIndicator())))
+        ],
+      )),
+    );
+  }
+
+  chargingModeChanged(newChargingMode) {
+    FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
+      database
+          .reference()
+          .child('users/${user.uid}/evc_inputs/charging_modes/')
+          .update({'single_charging_mode': newChargingMode});
+    });
+
+    setState(() {
+      singleChargingMode = newChargingMode;
+    });
+  }
+
+  getEVInputs(app) async {
+    FirebaseUser user = await FirebaseAuth.instance.currentUser();
+    String uid = user.uid;
+
+    _singleChargingModeSubscription = database
+        .reference()
+        .child('users/$uid/evc_inputs/charging_modes/single_charging_mode')
+        .onValue
+        .listen((Event event) {
+      singleChargingMode = event.snapshot.value;
+      setState(() {
+        print(singleChargingMode);
+      });
+    });
+
+    _bufferAggroModeSubscription = database
+        .reference()
+        .child('users/$uid/evc_inputs/charging_modes/single_charging_mode')
+        .onValue
+        .listen((Event event) {
+      bufferAggroMode = event.snapshot.value;
+      setState(() {
+        print(bufferAggroMode);
+      });
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    main().then((FirebaseApp app) {
+      database = new FirebaseDatabase(app: app);
+      getEVInputs(app);
+    });
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _singleChargingModeSubscription.cancel();
+    _bufferAggroModeSubscription.cancel();
+    print('disposed');
+  }
+}

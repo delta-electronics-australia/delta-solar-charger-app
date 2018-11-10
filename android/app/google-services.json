@@ -1,0 +1,42 @@
+{
+  "project_info": {
+    "project_number": "896921007938",
+    "firebase_url": "https://smart-charging-app.firebaseio.com",
+    "project_id": "smart-charging-app",
+    "storage_bucket": "smart-charging-app.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:896921007938:android:2be6175bd778747f",
+        "android_client_info": {
+          "package_name": "com.deltaww.smartchargingapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "896921007938-0vuh83q5q7v75oguthbtrnhubup3fhqf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDdPcphmG7TkAF1EQZf7MplDVRJ4uF-LwY"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 1,
+          "other_platform_oauth_client": []
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
