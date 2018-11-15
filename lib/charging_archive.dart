@@ -8,10 +8,13 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:smart_charging_app/change_settings.dart';
 import 'package:smart_charging_app/firebase_transfer.dart';
+import 'package:smart_charging_app/archivedChargingSession.dart';
+import 'package:smart_charging_app/inverter_archive.dart';
+import 'package:smart_charging_app/solarChargerSettings.dart';
+import 'package:smart_charging_app/liveDataStream.dart';
 
 import 'package:charts_flutter/flutter.dart' as charts;
 import 'package:intl/intl.dart';
-import 'package:http/http.dart' as http;
 
 Future<FirebaseApp> main() async {
   final FirebaseApp app = await FirebaseApp.configure(
@@ -41,7 +44,6 @@ class _ChargingArchiveState extends State<ChargingArchive> {
   var _headingFont = new TextStyle(fontSize: 20.0);
 
   DatabaseReference _chargingHistoryAnalyticsRef;
-  StreamSubscription<Event> _historyDataSubscription;
 
   Map validDatesPayload;
 
@@ -81,6 +83,24 @@ class _ChargingArchiveState extends State<ChargingArchive> {
           ListTile(
             title: Text('Live System Data'),
             onTap: () {
+              var route = new MaterialPageRoute(
+                  builder: (BuildContext context) => new DataStreamPage1());
+              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
+              Navigator.of(context).push(route);
+            },
+          ),
+          ListTile(
+            title: const Text('System Archive'),
+            onTap: () {
+              var route = new MaterialPageRoute(
+                  builder: (BuildContext context) => new InverterArchive());
+              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
+              Navigator.of(context).push(route);
+            },
+          ),
+          ListTile(
+            title: const Text('Charging Session Archive'),
+            onTap: () {
               Navigator.of(context).pop();
             },
           ),
@@ -90,6 +110,17 @@ class _ChargingArchiveState extends State<ChargingArchive> {
               Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
               var route = new MaterialPageRoute(
                   builder: (BuildContext context) => new DataStreamPage());
+              Navigator.of(context).push(route);
+            },
+          ),
+          ListTile(
+            title: Text('Change Solar Charging Settings'),
+            onTap: () {
+              print('moving to setings');
+              var route = new MaterialPageRoute(
+                  builder: (BuildContext context) =>
+                      new SolarChargerSettings());
+              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
               Navigator.of(context).push(route);
             },
           ),
@@ -111,23 +142,29 @@ class _ChargingArchiveState extends State<ChargingArchive> {
         ])),
         body: validDatesPayload != null
             ? new Center(
-                child: new ListView(
-                    padding: const EdgeInsets.only(top: 5),
+                child: new Column(
                     children: [
-                      new RaisedButton(
-                        onPressed: () {
-                          _selectDate(context, validDatesPayload);
-                        },
-                        child: const Text('Select a date'),
-                      ),
-                      new Divider(),
-                      pickedDate != null
-                          ? new ChargeSessionCards(
-                              pickedDate: pickedDate,
-                              database: database,
-                              uid: uid)
-                          : null
-                    ].where(notNull).toList()))
+                new Padding(padding: const EdgeInsets.only(top: 5)),
+                new RaisedButton(
+                  onPressed: () {
+                    _selectDate(context, validDatesPayload);
+                  },
+                  child: const Text('Select a date'),
+                ),
+                pickedDate != null
+                    ? new ListTile(
+                        title: Text(
+                        '${new DateFormat('LLLL d yyyy').format(pickedDate)}',
+                        style: _headingFont,
+                        textAlign: TextAlign.center,
+                      ))
+                    : null,
+                new Divider(),
+                pickedDate != null
+                    ? new ChargeSessionCards(
+                        pickedDate: pickedDate, database: database, uid: uid)
+                    : null
+              ].where(notNull).toList()))
             : new Center(
                 child: const Center(child: const CircularProgressIndicator())));
   }
@@ -233,13 +270,10 @@ class _ChargeSessionCardsState extends State<ChargeSessionCards> {
   @override
   Widget build(BuildContext context) {
     return cardWidgetList.length != 0
-        ? new ListView(
-            shrinkWrap: true,
+        ? new Expanded(
+            child: new ListView(
             children: cardWidgetList,
-//            padding: EdgeInsets.only(
-//                left: MediaQuery.of(context).size.width / 15,
-//                right: MediaQuery.of(context).size.width / 15),
-          )
+          ))
         : new Center(
             child: const Center(child: const CircularProgressIndicator()));
   }
@@ -261,13 +295,18 @@ class _ChargeSessionCardsState extends State<ChargeSessionCards> {
           .once();
 
       Map tempChargingAnalytics = chargingHistoryAnalyticsObject.value;
-      print(tempChargingAnalytics);
 
       /// If there are analytics for this charger on this day
       if (tempChargingAnalytics != null) {
-        /// Loop through all of the charging times
-        for (String chargingTime in tempChargingAnalytics.keys.toList()) {
-          print(tempChargingAnalytics[chargingTime]);
+
+        /// First sort the dates
+        var chargingTimeList =
+            tempChargingAnalytics.keys.toList(growable: false);
+        var sortedChargingTimeList = chargingTimeList
+          ..sort((time1, time2) => time1.compareTo(time2));
+
+        /// Loop through all of the sorted charging times
+        for (String chargingTime in sortedChargingTimeList) {
 
           /// First get the duration string
           String durationString = convertSecondsToDurationString(
@@ -313,55 +352,21 @@ class _ChargeSessionCardsState extends State<ChargeSessionCards> {
             ),
             onTap: () {
               print('$startTime $chargeEnergy $chargerID');
-              getChargingSession(chargerID, datePickedFormatted, chargingTime);
+              var route = new MaterialPageRoute(
+                  builder: (BuildContext context) => new ChargeSessionPage(
+                        chargerID: chargerID,
+                        startDate: datePickedFormatted,
+                        startTime: chargingTime,
+                        database: database,
+                      ));
+              Navigator.of(context).push(route);
+//              getChargingSession(chargerID, datePickedFormatted, chargingTime);
             },
           ));
-          setState(() {});
         }
       }
     }
-  }
-
-  getChargingSession(chargerID, datePickedFormatted, startTime) async {
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    var idToken = await user.getIdToken();
-
-    Map payload = {
-      "chargerID": chargerID,
-      "start_date": datePickedFormatted,
-      "start_time": startTime,
-      "idToken": idToken
-    };
-    var url = "http://203.32.104.46/delta_dashboard/charging_history_request2";
-    HttpClient httpClient = new HttpClient();
-    HttpClientRequest request = await httpClient.postUrl(Uri.parse(url));
-    request.headers.set('content-type', 'application/json');
-    request.add(utf8.encode(json.encode(payload)));
-    HttpClientResponse response = await request.close();
-    String tempReply = await response.transform(utf8.decoder).join();
-    httpClient.close();
-
-    Map decodedReply = json.decode(tempReply);
-    List timestamps = decodedReply['data_obj']['labels']
-        .map((dateString) => DateTime.parse(dateString))
-        .toList();
-
-    List<HistoryData> solarGenerationData = new List();
-    List<HistoryData> batteryPowerData = new List();
-    List<HistoryData> gridPowerData = new List();
-    List<HistoryData> loadPowerData = new List();
-
-    // Todo: up to here. Make an array for each dataset and then append it to a HistoryData object
-    for (Map dataset in decodedReply['data_obj']['datasets']) {
-      if (dataset['label'] == 'Solar Power') {
-      } else if (dataset['label'] == 'Utility Power') {
-      } else if (dataset['label'] == 'Battery Power') {
-      } else if (dataset['label'] == 'Charging Power') {}
-    }
-
-    for (int i = 0; i < timestamps.length; i++) {
-      DateTime timestamp = timestamps[i];
-    }
+    setState(() {});
   }
 
   String convertSecondsToDurationString(secondsInput) {
@@ -408,7 +413,7 @@ class _ChargeSessionCardsState extends State<ChargeSessionCards> {
   @override
   void initState() {
     super.initState();
-    print('hellomate');
+    print('Charging archive initialized');
     uid = widget.uid;
     database = widget.database;
     createChargeSessionCards();
@@ -424,11 +429,13 @@ class _ChargeSessionCardsState extends State<ChargeSessionCards> {
   void didUpdateWidget(ChargeSessionCards oldWidget) {
     super.didUpdateWidget(oldWidget);
 
-    /// We override this to ensure that the charge session cards will update every time
-    if (cardWidgetList.length != 0) {
-      cardWidgetList.clear();
+    if (oldWidget.pickedDate != widget.pickedDate) {
+      /// We override this to ensure that the charge session cards will update every time
+      if (cardWidgetList.length != 0) {
+        cardWidgetList.clear();
+      }
+      createChargeSessionCards();
     }
-    createChargeSessionCards();
   }
 }
 

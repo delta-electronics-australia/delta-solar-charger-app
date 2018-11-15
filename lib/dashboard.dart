@@ -10,6 +10,7 @@ import 'package:smart_charging_app/liveDataStream.dart';
 import 'package:smart_charging_app/solarChargerSettings.dart';
 import 'package:smart_charging_app/chargeSession.dart';
 import 'package:smart_charging_app/charging_archive.dart';
+import 'package:smart_charging_app/inverter_archive.dart';
 import 'package:charts_flutter/flutter.dart' as charts;
 import 'package:intl/intl.dart';
 import 'package:auto_size_text/auto_size_text.dart';
@@ -19,15 +20,15 @@ Future<FirebaseApp> main() async {
     name: 'smart-charging-app',
     options: Platform.isIOS
         ? const FirebaseOptions(
-            googleAppID: '1:297855924061:ios:c6de2b69b03a5be8',
-            gcmSenderID: '297855924061',
-            databaseURL: 'https://smart-charging-app.firebaseio.com/',
-          )
+      googleAppID: '1:297855924061:ios:c6de2b69b03a5be8',
+      gcmSenderID: '297855924061',
+      databaseURL: 'https://smart-charging-app.firebaseio.com/',
+    )
         : const FirebaseOptions(
-            googleAppID: '1:896921007938:android:2be6175bd778747f',
-            apiKey: 'AIzaSyCaxTOBofd7qrnbas5gGsZcuvy_zNSi_ik',
-            databaseURL: 'https://smart-charging-app.firebaseio.com/',
-          ),
+      googleAppID: '1:896921007938:android:2be6175bd778747f',
+      apiKey: 'AIzaSyCaxTOBofd7qrnbas5gGsZcuvy_zNSi_ik',
+      databaseURL: 'https://smart-charging-app.firebaseio.com/',
+    ),
   );
   return app;
 }
@@ -91,265 +92,271 @@ class _DashboardState extends State<Dashboard> {
         ),
         drawer: new Drawer(
             child: ListView(children: <Widget>[
-          UserAccountsDrawerHeader(
-            accountName: Text(_displayName),
-            accountEmail: Text(_displayEmail),
-            currentAccountPicture: const CircleAvatar(),
-            decoration: new BoxDecoration(color: Colors.blue),
-          ),
-          ListTile(
-            title: const Text('Dashboard'),
-            onTap: () {
-              Navigator.of(context).pop();
-            },
-          ),
-          ListTile(
-            title: const Text('Live System Data'),
-            onTap: () {
-              var route = new MaterialPageRoute(
-                  builder: (BuildContext context) => new DataStreamPage1());
-              Navigator.of(context).pop();
-              Navigator.of(context).push(route);
-            },
-          ),
-          ListTile(
-            title: const Text('System Archive'),
-            onTap: () {
-//                  var route = new MaterialPageRoute(
-//                      builder: (BuildContext context) => new DataStreamPage1());
-//                  Navigator.of(context).pop();
-//                  Navigator.of(context).push(route);
-            },
-          ),
-          ListTile(
-            title: const Text('Charging Session Archive'),
-            onTap: () {
-              var route = new MaterialPageRoute(
-                  builder: (BuildContext context) => new ChargingArchive());
-              Navigator.of(context).pop();
-              Navigator.of(context).push(route);
-            },
-          ),
-          ListTile(
-            title: Text('Live Data Stream2'),
-            onTap: () {
-              var route = new MaterialPageRoute(
-                  builder: (BuildContext context) => new DataStreamPage());
-              Navigator.of(context).pop();
-              Navigator.of(context).push(route);
-            },
-          ),
-          ListTile(
-            title: Text('Change Solar Charging Settings'),
-            onTap: () {
-              print('moving to setings');
-              var route = new MaterialPageRoute(
-                  builder: (BuildContext context) =>
+              UserAccountsDrawerHeader(
+                accountName: Text(_displayName),
+                accountEmail: Text(_displayEmail),
+                currentAccountPicture: const CircleAvatar(),
+                decoration: new BoxDecoration(color: Colors.blue),
+              ),
+              ListTile(
+                title: const Text('Dashboard'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+              ListTile(
+                title: const Text('Live System Data'),
+                onTap: () {
+                  var route = new MaterialPageRoute(
+                      builder: (BuildContext context) => new DataStreamPage1());
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(route);
+                },
+              ),
+              ListTile(
+                title: const Text('System Archive'),
+                onTap: () {
+                  var route = new MaterialPageRoute(
+                      builder: (BuildContext context) => new InverterArchive());
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(route);
+                },
+              ),
+              ListTile(
+                title: const Text('Charging Session Archive'),
+                onTap: () {
+                  var route = new MaterialPageRoute(
+                      builder: (BuildContext context) => new ChargingArchive());
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(route);
+                },
+              ),
+              ListTile(
+                title: Text('Live Data Stream2'),
+                onTap: () {
+                  var route = new MaterialPageRoute(
+                      builder: (BuildContext context) => new DataStreamPage());
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(route);
+                },
+              ),
+              ListTile(
+                title: Text('Change Solar Charging Settings'),
+                onTap: () {
+                  print('moving to setings');
+                  var route = new MaterialPageRoute(
+                      builder: (BuildContext context) =>
                       new SolarChargerSettings());
-              Navigator.of(context).pop();
-              Navigator.of(context).push(route);
-            },
-          ),
-          ListTile(
-            title: Text('Change Delta Smart Box Settings'),
-            onTap: () {
-              print('moving to setings');
-              var route = new MaterialPageRoute(
-                  builder: (BuildContext context) => new ChangeSettings());
-              Navigator.of(context).pop();
-              Navigator.of(context).push(route);
-            },
-          ),
-          Divider(),
-          ListTile(
-            title: Text('Sign Out'),
-            onTap: _signOut,
-          ),
-        ])),
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(route);
+                },
+              ),
+              ListTile(
+                title: Text('Change Delta Smart Box Settings'),
+                onTap: () {
+                  print('moving to setings');
+                  var route = new MaterialPageRoute(
+                      builder: (BuildContext context) => new ChangeSettings());
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(route);
+                },
+              ),
+              Divider(),
+              ListTile(
+                title: Text('Sign Out'),
+                onTap: _signOut,
+              ),
+            ])),
         body: loadingData
             ? new Center(
-                child: const Center(child: const CircularProgressIndicator()))
+            child: const Center(child: const CircularProgressIndicator()))
             : new Center(
-                child: new ListView(
-                children: <Widget>[
-                  new Card(
+            child: new ListView(
+              children: <Widget>[
+                new Card(
+                  child: new Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      new ListTile(
+                          title: new Center(
+                              child: new Text(
+                                "Solar Generated Today",
+                                style: _headingFont,
+                              ))),
+                      new ListTile(
+                          title: new Center(
+                              child: new Text(
+                                "${liveAnalytics['dcp_t']}",
+                                style: _valueFont,
+                              ))),
+                    ],
+                  ),
+                ),
+                new Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: <Widget>[
+                    new Expanded(
+                        child: new Card(
+                            child: new Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                new ListTile(
+                                    title: new Center(
+                                        child: new Text(
+                                          "Power Exported Today",
+                                          style: _headingFont,
+                                          textAlign: TextAlign.center,
+                                        ))),
+                                new ListTile(
+                                    title: new Center(
+                                        child: new Text(
+                                          "${liveAnalytics['utility_p_export_t']}",
+                                          style: _valueFont,
+                                        ))),
+                              ],
+                            ))),
+                    new Expanded(
+                        child: new Card(
+                            child: new Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                new ListTile(
+                                    title: new Center(
+                                        child: new Text(
+                                          "Power Imported Today",
+                                          style: _headingFont,
+                                          textAlign: TextAlign.center,
+                                        ))),
+                                new ListTile(
+                                    title: new Center(
+                                        child: new Text(
+                                          "${liveAnalytics['utility_p_import_t']}",
+                                          style: _valueFont,
+                                        ))),
+                              ],
+                            ))),
+                  ],
+                ),
+                new Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: <Widget>[
+                    new Expanded(
+                        child: new Card(
+                            child: new Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                new ListTile(
+                                    title: new Center(
+                                        child: new Text(
+                                          "Battery Consumed Today",
+                                          style: _headingFont,
+                                          textAlign: TextAlign.center,
+                                        ))),
+                                new ListTile(
+                                    title: new Center(
+                                        child: new Text(
+                                          "${liveAnalytics['btp_consumed_t']}",
+                                          style: _valueFont,
+                                        ))),
+                              ],
+                            ))),
+                    new Expanded(
+                        child: new Card(
+                            child: new Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                new ListTile(
+                                    title: new Center(
+                                        child: new Text(
+                                          "Battery Charged Today",
+                                          style: _headingFont,
+                                          textAlign: TextAlign.center,
+                                        ))),
+                                new ListTile(
+                                    title: new Center(
+                                        child: new Text(
+                                          "${liveAnalytics['btp_charged_t']}",
+                                          style: _valueFont,
+                                        ))),
+                              ],
+                            ))),
+                  ],
+                ),
+                new Card(
+                  child: new ExpansionTile(
+                      leading: chargingSessionIcon,
+                      title: numChargingSessionsActive,
+                      children: listOfChargingChargers),
+                ),
+                new Card(
                     child: new Column(
-                      mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
                         new ListTile(
                             title: new Center(
                                 child: new Text(
-                          "Solar Generated Today",
-                          style: _headingFont,
-                        ))),
+                                  "Solar Generation History",
+                                  style: _headingFont,
+                                  textAlign: TextAlign.center,
+                                ))),
+                        new SizedBox(
+                          height: 200.0,
+                          child: new charts.TimeSeriesChart(
+                            _getSolarGenerationData(inverterHistoryAnalytics),
+                            animate: true,
+//                          primaryMeasureAxis: new charts.NumericAxisSpec(
+//                            renderSpec: new charts.GridlineRendererSpec(
+//                              labelAnchor: charts.TickLabelAnchor.before
+//                            )
+//                          ),
+                            defaultRenderer:
+                            new charts.BarRendererConfig<DateTime>(),
+                            domainAxis: new charts.DateTimeAxisSpec(
+                                usingBarRenderer: true),
+                            defaultInteractions: false,
+                            behaviors: [
+                              new charts.SelectNearest(),
+                              new charts.DomainHighlighter()
+                            ],
+                          ),
+                        ),
+                      ],
+                    )),
+                new Card(
+                    child: new Column(
+                      children: <Widget>[
                         new ListTile(
                             title: new Center(
                                 child: new Text(
-                          "${liveAnalytics['dcp_t']}",
-                          style: _valueFont,
-                        ))),
-                      ],
-                    ),
-                  ),
-                  new Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: <Widget>[
-                      new Expanded(
-                          child: new Card(
-                              child: new Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          new ListTile(
-                              title: new Center(
-                                  child: new Text(
-                            "Power Exported Today",
-                            style: _headingFont,
-                            textAlign: TextAlign.center,
-                          ))),
-                          new ListTile(
-                              title: new Center(
-                                  child: new Text(
-                            "${liveAnalytics['utility_p_export_t']}",
-                            style: _valueFont,
-                          ))),
-                        ],
-                      ))),
-                      new Expanded(
-                          child: new Card(
-                              child: new Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          new ListTile(
-                              title: new Center(
-                                  child: new Text(
-                            "Power Imported Today",
-                            style: _headingFont,
-                            textAlign: TextAlign.center,
-                          ))),
-                          new ListTile(
-                              title: new Center(
-                                  child: new Text(
-                            "${liveAnalytics['utility_p_import_t']}",
-                            style: _valueFont,
-                          ))),
-                        ],
-                      ))),
-                    ],
-                  ),
-                  new Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: <Widget>[
-                      new Expanded(
-                          child: new Card(
-                              child: new Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          new ListTile(
-                              title: new Center(
-                                  child: new Text(
-                            "Battery Consumed Today",
-                            style: _headingFont,
-                            textAlign: TextAlign.center,
-                          ))),
-                          new ListTile(
-                              title: new Center(
-                                  child: new Text(
-                            "${liveAnalytics['btp_consumed_t']}",
-                            style: _valueFont,
-                          ))),
-                        ],
-                      ))),
-                      new Expanded(
-                          child: new Card(
-                              child: new Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          new ListTile(
-                              title: new Center(
-                                  child: new Text(
-                            "Battery Charged Today",
-                            style: _headingFont,
-                            textAlign: TextAlign.center,
-                          ))),
-                          new ListTile(
-                              title: new Center(
-                                  child: new Text(
-                            "${liveAnalytics['btp_charged_t']}",
-                            style: _valueFont,
-                          ))),
-                        ],
-                      ))),
-                    ],
-                  ),
-                  new Card(
-                    child: new ExpansionTile(
-                        leading: chargingSessionIcon,
-                        title: numChargingSessionsActive,
-                        children: listOfChargingChargers),
-                  ),
-                  new Card(
-                      child: new Column(
-                    children: <Widget>[
-                      new ListTile(
-                          title: new Center(
-                              child: new Text(
-                        "Solar Generation History",
-                        style: _headingFont,
-                        textAlign: TextAlign.center,
-                      ))),
-                      new SizedBox(
-                        height: 200.0,
-                        child: new charts.TimeSeriesChart(
-                          _getSolarGenerationData(inverterHistoryAnalytics),
-                          animate: true,
-                          defaultRenderer:
-                              new charts.BarRendererConfig<DateTime>(),
-                          domainAxis: new charts.DateTimeAxisSpec(
-                              usingBarRenderer: true),
-                          defaultInteractions: false,
-                          behaviors: [
-                            new charts.SelectNearest(),
-                            new charts.DomainHighlighter()
-                          ],
+                                  "Daily Charger Breakdown",
+                                  style: _headingFont,
+                                  textAlign: TextAlign.center,
+                                ))),
+                        new SizedBox(
+                          height: 200.0,
+                          child: dailyChargerBreakdownSeriesList == null
+                              ? new Center(
+                              child: const Center(
+                                  child: const CircularProgressIndicator()))
+                              : new charts.TimeSeriesChart(
+
+                            /// If our series list is empty then just display random data
+                            /// If it isn't empty then we can display that data
+                            dailyChargerBreakdownSeriesList,
+                            animate: true,
+                            defaultRenderer:
+                            new charts.BarRendererConfig<DateTime>(
+                                groupingType:
+                                charts.BarGroupingType.stacked),
+                            domainAxis: new charts.DateTimeAxisSpec(
+                                usingBarRenderer: true),
+                            defaultInteractions: false,
+                            behaviors: [new charts.SeriesLegend()],
+                          ),
                         ),
-                      ),
-                    ],
-                  )),
-                  new Card(
-                      child: new Column(
-                    children: <Widget>[
-                      new ListTile(
-                          title: new Center(
-                              child: new Text(
-                        "Daily Charger Breakdown",
-                        style: _headingFont,
-                        textAlign: TextAlign.center,
-                      ))),
-                      new SizedBox(
-                        height: 200.0,
-                        child: dailyChargerBreakdownSeriesList == null
-                            ? new Center(
-                                child: const Center(
-                                    child: const CircularProgressIndicator()))
-                            : new charts.TimeSeriesChart(
-                                /// If our series list is empty then just display random data
-                                /// If it isn't empty then we can display that data
-                                dailyChargerBreakdownSeriesList,
-                                animate: true,
-                                defaultRenderer:
-                                    new charts.BarRendererConfig<DateTime>(
-                                        groupingType:
-                                            charts.BarGroupingType.stacked),
-                                domainAxis: new charts.DateTimeAxisSpec(
-                                    usingBarRenderer: true),
-                                defaultInteractions: false,
-                                behaviors: [new charts.SeriesLegend()],
-                              ),
-                      ),
-                    ],
-                  )),
-                ],
-              )));
+                      ],
+                    )),
+              ],
+            )));
   }
 
   getUserDetails() {
@@ -410,7 +417,7 @@ class _DashboardState extends State<Dashboard> {
 
       for (var i = numDays; i >= 0; i--) {
         DateTime dateObject =
-            new DateTime.now().subtract(new Duration(days: i));
+        new DateTime.now().subtract(new Duration(days: i));
         String dateString = dateFormatter.format(dateObject);
 
         /// Check if for this day we have data for this chargerID
@@ -466,7 +473,7 @@ class _DashboardState extends State<Dashboard> {
 
     /// seriesArray will the final array of series to go into build
     var seriesArray =
-        await grabChargerAnalyticsValues(user, database, evChargers, 15);
+    await grabChargerAnalyticsValues(user, database, evChargers, 15);
 
     if (this.mounted) {
       setState(() {
@@ -577,10 +584,10 @@ class _DashboardState extends State<Dashboard> {
       /// Loop through all of the chargers that exist
       List<Widget> tempListOfChargingChargers = [];
       for (var chargerID in chargingObj.keys.toList(growable: false)) {
-        bool isCharging = chargingObj[chargerID];
+        var isCharging = chargingObj[chargerID];
 
         /// If they are charging then we want to extract the charge session
-        if (isCharging) {
+        if (isCharging == true) {
           /// Get our latest date for this chargerID
           DataSnapshot tempSnapshot = await database
               .reference()
@@ -590,19 +597,19 @@ class _DashboardState extends State<Dashboard> {
               .once();
 
           var latestChargingDate =
-              tempSnapshot.value.keys.toList(growable: false)[0];
+          tempSnapshot.value.keys.toList(growable: false)[0];
 
           /// Using the latest date, get the latest time
           tempSnapshot = await database
               .reference()
               .child(
-                  'users/$uid/charging_history_keys/$chargerID/$latestChargingDate')
+              'users/$uid/charging_history_keys/$chargerID/$latestChargingDate')
               .orderByKey()
               .limitToLast(1)
               .once();
 
           var latestChargingTime =
-              tempSnapshot.value.keys.toList(growable: false)[0];
+          tempSnapshot.value.keys.toList(growable: false)[0];
 
           /// Now combine them to get the latest charging timestamp
           var latestChargingTimestamp =
@@ -632,6 +639,21 @@ class _DashboardState extends State<Dashboard> {
                   });
             },
           ));
+        } else if (isCharging == "plugged") {
+          print('$chargerID is plugged');
+          tempListOfChargingChargers.add(new ListTile(
+            title: new Text('$chargerID'),
+            trailing: const Text('Charger plugged in'),
+            onTap: () {
+              print('tapped');
+              showModalBottomSheet(
+                  context: context,
+                  builder: (builder) {
+                    return new RemoteStartTransactionModal(
+                        chargerID: chargerID, database: database);
+                  });
+            },
+          ));
         }
       }
 
@@ -639,14 +661,14 @@ class _DashboardState extends State<Dashboard> {
       print(tempListOfChargingChargers);
 
       if (tempListOfChargingChargers.length == 0) {
-        numChargingSessionsActive = Text("No Charging Sessions Active");
+        numChargingSessionsActive = Text("No Chargers Active");
         chargingSessionIcon = new Icon(Icons.battery_std);
       } else if (tempListOfChargingChargers.length == 1) {
-        numChargingSessionsActive = Text("One Charging Session Active");
+        numChargingSessionsActive = Text("One Charger Active");
         chargingSessionIcon = new Icon(Icons.battery_charging_full);
       } else {
-        numChargingSessionsActive = Text(
-            "${tempListOfChargingChargers.length} Charging Sessions Active");
+        numChargingSessionsActive =
+            Text("${tempListOfChargingChargers.length} Chargers Active");
         chargingSessionIcon = new Icon(Icons.battery_charging_full);
       }
 
@@ -713,11 +735,10 @@ class AnalyticsData {
 }
 
 class TrailingEnergyUsed extends StatefulWidget {
-  TrailingEnergyUsed(
-      {Key key,
-      @required this.chargerID,
-      @required this.app,
-      @required this.latestChargingTimestamp})
+  TrailingEnergyUsed({Key key,
+    @required this.chargerID,
+    @required this.app,
+    @required this.latestChargingTimestamp})
       : super(key: key);
 
   final chargerID;
@@ -750,7 +771,8 @@ class _TrailingEnergyUsedState extends State<TrailingEnergyUsed> {
     chargeSessionSubscription = database
         .reference()
         .child(
-            'users/$uid/charging_history/${widget.chargerID}/${widget.latestChargingTimestamp}')
+        'users/$uid/charging_history/${widget.chargerID}/${widget
+            .latestChargingTimestamp}')
         .limitToLast(1)
         .onValue
         .listen((Event event) {
@@ -760,7 +782,7 @@ class _TrailingEnergyUsedState extends State<TrailingEnergyUsed> {
         /// Find the amount of energy used currently
         chargingEnergyUsed =
             latestPayload[latestPayload.keys.toList(growable: false)[0]]
-                    ['Energy_Import_Aggregate']
+            ['Energy_Import_Aggregate']
                 .toStringAsFixed(2);
 
         setState(() {});
@@ -791,12 +813,78 @@ class _TrailingEnergyUsedState extends State<TrailingEnergyUsed> {
   }
 }
 
+class RemoteStartTransactionModal extends StatefulWidget {
+  RemoteStartTransactionModal(
+      {Key key, @required this.chargerID, @required this.database})
+      : super(key: key);
+
+  final chargerID;
+  final database;
+
+  @override
+  _RemoteStartTransactionModalState createState() =>
+      _RemoteStartTransactionModalState();
+}
+
+class _RemoteStartTransactionModalState
+    extends State<RemoteStartTransactionModal> {
+  bool startingCharge = false;
+
+  StreamSubscription chargingSubscription;
+
+  @override
+  Widget build(BuildContext context) {
+    return startingCharge
+        ? new Center(
+        child: const Center(child: const CircularProgressIndicator()))
+        : new Center(
+      child: new RaisedButton(
+          child: const Text('Start Charging Session'),
+          onPressed: () {
+            print('pressed');
+            remoteStartTransaction();
+          }),
+    );
+  }
+
+  remoteStartTransaction() async {
+
+    setState(() {
+      startingCharge = true;
+    });
+
+    FirebaseUser user = await FirebaseAuth.instance.currentUser();
+    String uid = user.uid;
+
+    FirebaseDatabase database = widget.database;
+
+    database.reference().child('users/$uid/evc_inputs').update({
+      "misc_command": {
+        "chargerID": widget.chargerID,
+        "action": "RemoteStartTransaction",
+        "misc_data": ""
+      }
+    });
+
+    chargingSubscription = database
+        .reference()
+        .child('users/$uid/evc_inputs/charging/${widget.chargerID}')
+        .onValue
+        .listen((Event event) {
+      var isCharging = event.snapshot.value;
+
+      if (isCharging == true) {
+        Navigator.pop(context);
+      }
+    });
+  }
+}
+
 class ChargingSessionModal extends StatefulWidget {
-  ChargingSessionModal(
-      {Key key,
-      @required this.chargerID,
-      @required this.database,
-      @required this.latestChargingTimestamp})
+  ChargingSessionModal({Key key,
+    @required this.chargerID,
+    @required this.database,
+    @required this.latestChargingTimestamp})
       : super(key: key);
 
   final chargerID;
@@ -825,90 +913,96 @@ class _ChargingSessionModalState extends State<ChargingSessionModal> {
   Widget build(BuildContext context) {
     return stoppingCharging
         ? new Center(
-            child: const Center(child: const CircularProgressIndicator()))
+        child: const Center(child: const CircularProgressIndicator()))
         : new Container(
-            child: new ListView(
-              shrinkWrap: true,
-              padding: new EdgeInsets.only(
-                  top: 15,
-                  left: MediaQuery.of(context).size.width / 11,
-                  right: MediaQuery.of(context).size.width / 11),
-              children: <Widget>[
-                new Center(
-                    child: new AutoSizeText(
-                  '${widget.chargerID}: Live Charging Session',
-                  style: TextStyle(fontSize: 25.0),
-                  maxLines: 1,
-                )),
-                new Divider(),
-                new ListTile(
-                  title: const Text('Charging Started:',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  trailing: chargingStartTime != null
-                      ? Text('$chargingStartTime')
-                      : Text('loading...'),
-                ),
-                new ListTile(
-                  title: const Text('Duration:',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  trailing: chargingDuration != null
-                      ? Text('$chargingDuration')
-                      : Text('loading...'),
-                ),
-                new ListTile(
-                  title: const Text('Energy Consumed:',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  trailing: chargingEnergy != null
-                      ? Text('$chargingEnergy kWh')
-                      : Text('loading...'),
-                ),
-                new ListTile(
-                  title: const Text('Charging Power:',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  trailing: chargingPower != null
-                      ? Text('$chargingPower kW')
-                      : Text('loading...'),
-                ),
-                new ListTile(
-                  title: const Text('Charging Current:',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  trailing: chargingCurrent != null
-                      ? Text('$chargingCurrent A')
-                      : Text('loading...'),
-                ),
-                new Divider(),
-                new Row(
-                  children: <Widget>[
-                    new RaisedButton(
-                      child: new Text('Stop charging session'),
-                      onPressed: () {
-                        print('pressed');
-                        stopChargingSession();
-                      },
-                      color: Colors.redAccent,
-                    ),
-                    new RaisedButton(
-                      child: new Text('More info...'),
-                      onPressed: () {
-                        print('pressed');
+      child: new ListView(
+        shrinkWrap: true,
+        padding: new EdgeInsets.only(
+            top: 15,
+            left: MediaQuery
+                .of(context)
+                .size
+                .width / 11,
+            right: MediaQuery
+                .of(context)
+                .size
+                .width / 11),
+        children: <Widget>[
+          new Center(
+              child: new AutoSizeText(
+                '${widget.chargerID}: Live Charging Session',
+                style: TextStyle(fontSize: 25.0),
+                maxLines: 1,
+              )),
+          new Divider(),
+          new ListTile(
+            title: const Text('Charging Started:',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            trailing: chargingStartTime != null
+                ? Text('$chargingStartTime')
+                : Text('loading...'),
+          ),
+          new ListTile(
+            title: const Text('Duration:',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            trailing: chargingDuration != null
+                ? Text('$chargingDuration')
+                : Text('loading...'),
+          ),
+          new ListTile(
+            title: const Text('Energy Consumed:',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            trailing: chargingEnergy != null
+                ? Text('$chargingEnergy kWh')
+                : Text('loading...'),
+          ),
+          new ListTile(
+            title: const Text('Charging Power:',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            trailing: chargingPower != null
+                ? Text('$chargingPower kW')
+                : Text('loading...'),
+          ),
+          new ListTile(
+            title: const Text('Charging Current:',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            trailing: chargingCurrent != null
+                ? Text('$chargingCurrent A')
+                : Text('loading...'),
+          ),
+          new Divider(),
+          new Row(
+            children: <Widget>[
+              new RaisedButton(
+                child: new Text('Stop charging session'),
+                onPressed: () {
+                  print('pressed');
+                  stopChargingSession();
+                },
+                color: Colors.redAccent,
+              ),
+              new RaisedButton(
+                child: new Text('More info...'),
+                onPressed: () {
+                  print('pressed');
 //                  Navigator.pop(context);
-                        var route = new MaterialPageRoute(
-                            builder: (BuildContext context) =>
-                                new ChargeSessionPage(
-                                  latestChargingTimestamp:
-                                      widget.latestChargingTimestamp,
-                                  database: widget.database,
-                                  chargerID: widget.chargerID,
-                                ));
-                        Navigator.of(context).push(route);
-                      },
-                    ),
-                  ],
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                )
-              ],
-            ),
-          );
+                  var route = new MaterialPageRoute(
+                      builder: (BuildContext context) =>
+                      new ChargeSessionPage(
+                        latestChargingTimestamp:
+                        widget.latestChargingTimestamp,
+                        database: widget.database,
+                        chargerID: widget.chargerID,
+                      ));
+                  Navigator.of(context).push(route);
+                },
+              ),
+            ],
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          )
+        ],
+      ),
+    );
   }
 
   stopChargingSession() async {
@@ -936,7 +1030,7 @@ class _ChargingSessionModalState extends State<ChargingSessionModal> {
         .listen((Event event) {
       var isCharging = event.snapshot.value;
 
-      if (!isCharging) {
+      if (isCharging == false) {
         Navigator.pop(context);
       }
     });
@@ -982,7 +1076,8 @@ class _ChargingSessionModalState extends State<ChargingSessionModal> {
     database
         .reference()
         .child(
-            'users/$uid/charging_history/${widget.chargerID}/${widget.latestChargingTimestamp}')
+        'users/$uid/charging_history/${widget.chargerID}/${widget
+            .latestChargingTimestamp}')
         .limitToFirst(1)
         .once()
         .then((DataSnapshot snapshot) {
@@ -997,7 +1092,8 @@ class _ChargingSessionModalState extends State<ChargingSessionModal> {
       database
           .reference()
           .child(
-              'users/$uid/charging_history/${widget.chargerID}/${widget.latestChargingTimestamp}')
+          'users/$uid/charging_history/${widget.chargerID}/${widget
+              .latestChargingTimestamp}')
           .limitToLast(1)
           .once()
           .then((DataSnapshot snapshot) {
@@ -1006,7 +1102,7 @@ class _ChargingSessionModalState extends State<ChargingSessionModal> {
 
         /// Find the duration between the start of charging and now
         Duration totalSecondsObject =
-            latestChargingTimeObj.difference(DateTime.parse(chargingStartTime));
+        latestChargingTimeObj.difference(DateTime.parse(chargingStartTime));
 
         /// Convert it into a string to setState
         chargingDuration = convertSecondsToDurationString(totalSecondsObject);
@@ -1019,7 +1115,8 @@ class _ChargingSessionModalState extends State<ChargingSessionModal> {
     chargeSessionSubscription = database
         .reference()
         .child(
-            'users/$uid/charging_history/${widget.chargerID}/${widget.latestChargingTimestamp}')
+        'users/$uid/charging_history/${widget.chargerID}/${widget
+            .latestChargingTimestamp}')
         .limitToLast(1)
         .onValue
         .listen((Event event) {
@@ -1029,24 +1126,24 @@ class _ChargingSessionModalState extends State<ChargingSessionModal> {
       /// Find the amount of energy used currently
       chargingEnergy =
           latestPayload[latestPayload.keys.toList(growable: false)[0]]
-                  ['Energy_Import_Aggregate']
+          ['Energy_Import_Aggregate']
               .toStringAsFixed(2);
 
       /// Find the amount of power being currently used
       chargingPower =
-          latestPayload[latestPayload.keys.toList(growable: false)[0]]
-              ['Power_Import'];
+      latestPayload[latestPayload.keys.toList(growable: false)[0]]
+      ['Power_Import'];
 
       /// Find the amount of current being currently used
       chargingCurrent =
-          latestPayload[latestPayload.keys.toList(growable: false)[0]]
-              ['Current_Import'];
+      latestPayload[latestPayload.keys.toList(growable: false)[0]]
+      ['Current_Import'];
 
       /// Find the charging duration
       if (chargingStartTimeObj != null) {
         Duration totalSecondsObject = DateTime.parse(
-                latestPayload[latestPayload.keys.toList(growable: false)[0]]
-                    ['Time'])
+            latestPayload[latestPayload.keys.toList(growable: false)[0]]
+            ['Time'])
             .difference(chargingStartTimeObj);
         int totalSeconds = totalSecondsObject.inSeconds;
         int hours = totalSeconds ~/ 3600;
