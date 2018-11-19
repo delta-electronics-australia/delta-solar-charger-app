@@ -159,6 +159,11 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
               dataArray.add(
                   new HistoryData(newPayloadTime, newHistoryData['utility_p']));
               historyChartsDataObject['Grid Power'] = dataArray;
+            } else if (dataName == "Load Power") {
+              dataArray.removeAt(0);
+              dataArray.add(
+                  new HistoryData(newPayloadTime, newHistoryData['ac2p']));
+              historyChartsDataObject['Load Power'] = dataArray;
             }
           });
         }
