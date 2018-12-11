@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:convert';
-import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:web_socket_channel/io.dart';
 import 'package:smart_charging_app/authenticate.dart';
 import 'package:smart_charging_app/connect_bluetooth.dart';
 

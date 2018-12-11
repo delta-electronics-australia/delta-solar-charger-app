@@ -36,7 +36,7 @@ class SolarChargerSettings extends StatefulWidget {
 class _SolarChargerSettingsState extends State<SolarChargerSettings> {
   FirebaseDatabase database;
 
-  final _headingFont = const TextStyle(fontSize: 30.0);
+  final _headingFont = const TextStyle(fontSize: 25.0);
   Map<String, String> chargingModeOptions = {
     'Standalone: PV with Battery Backup': 'PV_with_BT',
     'Standalone: Maximise EV Charge Rate': 'MAX_CHARGE_STANDALONE',
@@ -49,12 +49,18 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
     'Conservative',
     'Ultra Conservative'
   ];
+  Map<String, String> authenticationRequiredOptions = {
+    'RFID Swipe Required': 'true',
+    'RFID Swipe not Required': 'false'
+  };
 
   String singleChargingMode;
-  String bufferAggroMode = 'Aggressive';
+  String bufferAggroMode;
+  String authenticationRequired;
 
   StreamSubscription _singleChargingModeSubscription;
   StreamSubscription _bufferAggroModeSubscription;
+  StreamSubscription _authenticationRequiredSubscription;
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +75,7 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
                   ? new Column(
                       children: <Widget>[
                         new Text(
-                          'Select Charging Mode',
+                          'Charging Mode',
                           style: _headingFont,
                         ),
                         new DropdownButton(
@@ -90,38 +96,90 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
                   : new Center(
                       child: const Center(
                           child: const CircularProgressIndicator()))),
-
-//          new Card(
-//              child: bufferAggroMode == null
-//                  ? new Column(
-//                      children: <Widget>[
-//                        new Text(
-//                          'Select Buffer Aggresiveness',
-//                          style: _headingFont,
-//                        ),
-//                        new Text(
-//                          'How aggressive should we be in using the battery? The more aggressive, the more the battery will be used in standalone mode',
-//                        ),
-//                        new DropdownButton(
-//                          items: bufferAggressivenessOptions
-//                              .map((String bufferAggressiveness) {
-//                            return new DropdownMenuItem<String>(
-//                                child: Text(bufferAggressiveness),
-//                                value: bufferAggressiveness);
-//                          }).toList(),
-//                          onChanged: chargingModeChanged,
-//                          value: bufferAggroMode,
-//                        ),
-//                        new Text(
-//                            'Note: This mode will only work during Standalone: PV with Battery Backup mode'),
-//                      ],
-//                    )
-//                  : new Center(
-//                      child: const Center(
-//                          child: const CircularProgressIndicator())))
+          new Card(
+              child: bufferAggroMode != null
+                  ? new Column(
+                      children: <Widget>[
+                        new Text(
+                          'Buffer Aggresiveness',
+                          style: _headingFont,
+                        ),
+                        new Text(
+                          'How aggressive should we be in using the battery? The more aggressive, the more the battery will be used in standalone mode',
+                        ),
+                        new DropdownButton(
+                          items: bufferAggressivenessOptions
+                              .map((String bufferAggressiveness) {
+                            return new DropdownMenuItem<String>(
+                                child: Text(bufferAggressiveness),
+                                value: bufferAggressiveness);
+                          }).toList(),
+                          onChanged: bufferAggressivenessChanged,
+                          value: bufferAggroMode,
+                        ),
+                        new Text(
+                            'Note: This mode will only work during Standalone: PV with Battery Backup mode'),
+                      ],
+                    )
+                  : new Center(
+                      child: const Center(
+                          child: const CircularProgressIndicator()))),
+          new Card(
+              child: authenticationRequired != null
+                  ? new Column(
+                      children: <Widget>[
+                        new Text(
+                          'Authentication Requirements',
+                          style: _headingFont,
+                        ),
+                        new Text(
+                            'Will the solar charger require a RFID card authentication?'),
+                        new DropdownButton(
+                          items: authenticationRequiredOptions.keys
+                              .toList()
+                              .map((String authenticationRequirement) {
+                            return new DropdownMenuItem<String>(
+                                child: Text(authenticationRequirement),
+                                value: authenticationRequiredOptions[
+                                        authenticationRequirement]);
+                          }).toList(),
+                          onChanged: authenticationRequiredChanged,
+                          value: authenticationRequired,
+                        ),
+                      ],
+                    )
+                  : new Center(
+                      child: const Center(
+                          child: const CircularProgressIndicator())))
         ],
       )),
     );
+  }
+
+  authenticationRequiredChanged(newAuthenticationRequirement){
+    FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
+      database
+          .reference()
+          .child('users/${user.uid}/evc_inputs/charging_modes')
+          .update({'authentication_required': newAuthenticationRequirement == 'true'});
+    });
+
+    setState(() {
+      authenticationRequired = newAuthenticationRequirement;
+    });
+  }
+
+  bufferAggressivenessChanged(newBufferAggressiveness) {
+    FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
+      database
+          .reference()
+          .child('users/${user.uid}/evc_inputs/')
+          .update({'buffer_aggro_mode': newBufferAggressiveness});
+    });
+
+    setState(() {
+      bufferAggroMode = newBufferAggressiveness;
+    });
   }
 
   chargingModeChanged(newChargingMode) {
@@ -154,12 +212,23 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
 
     _bufferAggroModeSubscription = database
         .reference()
-        .child('users/$uid/evc_inputs/charging_modes/single_charging_mode')
+        .child('users/$uid/evc_inputs/buffer_aggro_mode')
         .onValue
         .listen((Event event) {
       bufferAggroMode = event.snapshot.value;
       setState(() {
         print(bufferAggroMode);
+      });
+    });
+
+    _authenticationRequiredSubscription = database
+        .reference()
+        .child('users/$uid/evc_inputs/charging_modes/authentication_required')
+        .onValue
+        .listen((Event event) {
+      authenticationRequired = event.snapshot.value.toString();
+      setState(() {
+        print(authenticationRequired);
       });
     });
   }
@@ -178,6 +247,7 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
     super.dispose();
     _singleChargingModeSubscription.cancel();
     _bufferAggroModeSubscription.cancel();
+    _authenticationRequiredSubscription.cancel();
     print('disposed');
   }
 }

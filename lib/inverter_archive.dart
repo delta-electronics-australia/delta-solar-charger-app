@@ -8,6 +8,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:smart_charging_app/change_settings.dart';
 import 'package:smart_charging_app/firebase_transfer.dart';
+import 'package:smart_charging_app/liveDataStream.dart';
+import 'package:smart_charging_app/charging_archive.dart';
+import 'package:smart_charging_app/solarChargerSettings.dart';
 import 'package:smart_charging_app/archivedChargingSession.dart';
 
 import 'package:charts_flutter/flutter.dart' as charts;
@@ -80,7 +83,25 @@ class _InverterArchiveState extends State<InverterArchive> {
           ListTile(
             title: Text('Live System Data'),
             onTap: () {
+              var route = new MaterialPageRoute(
+                  builder: (BuildContext context) => new DataStreamPage1());
+              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
+              Navigator.of(context).push(route);
+            },
+          ),
+          ListTile(
+            title: const Text('System Archive'),
+            onTap: () {
               Navigator.of(context).pop();
+            },
+          ),
+          ListTile(
+            title: const Text('Charging Session Archive'),
+            onTap: () {
+              var route = new MaterialPageRoute(
+                  builder: (BuildContext context) => new ChargingArchive());
+              Navigator.of(context).pop();
+              Navigator.of(context).push(route);
             },
           ),
           ListTile(
@@ -89,6 +110,17 @@ class _InverterArchiveState extends State<InverterArchive> {
               Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
               var route = new MaterialPageRoute(
                   builder: (BuildContext context) => new DataStreamPage());
+              Navigator.of(context).push(route);
+            },
+          ),
+          ListTile(
+            title: Text('Change Solar Charging Settings'),
+            onTap: () {
+              print('moving to setings');
+              var route = new MaterialPageRoute(
+                  builder: (BuildContext context) =>
+                      new SolarChargerSettings());
+              Navigator.of(context).pop();
               Navigator.of(context).push(route);
             },
           ),
@@ -121,7 +153,29 @@ class _InverterArchiveState extends State<InverterArchive> {
                   },
                   child: const Text('Select a date'),
                 ),
+                pickedDate != null
+                    ? new ListTile(
+                        title: Text(
+                        '${new DateFormat('LLLL d yyyy').format(pickedDate)} selected',
+                        style: _headingFont,
+                        textAlign: TextAlign.center,
+                      ))
+                    : null,
+//                pickedDate != null
+//                    ? new RaisedButton(
+//                        onPressed: () {
+//                          print('beep!');
+//                        },
+//                        child: new Row(children: <Widget>[
+//                          Text("Grab historical data"),
+//                          Icon(Icons.arrow_right),
+//                        ]))
+//                    : null,
                 new Divider(),
+                pickedDate != null
+                    ? new SystemArchiveInformationWidgets(
+                        database: database, uid: uid, pickedDate: pickedDate)
+                    : null
               ].where(notNull).toList()))
             : new Center(
                 child: const Center(child: const CircularProgressIndicator())));
@@ -155,7 +209,6 @@ class _InverterArchiveState extends State<InverterArchive> {
     var inverterHistoryKeysObject;
     DataSnapshot snapshot = await _inverterHistoryKeysRef.once();
     inverterHistoryKeysObject = snapshot.value;
-    print(inverterHistoryKeysObject);
 
     DateTime earliestDate = DateTime(2050, 01, 01);
 
@@ -193,6 +246,165 @@ class _InverterArchiveState extends State<InverterArchive> {
       validDatesPayload = await getValidChargingDates();
       setState(() {});
     });
+  }
+}
+
+class SystemArchiveInformationWidgets extends StatefulWidget {
+  SystemArchiveInformationWidgets(
+      {Key key,
+      @required this.pickedDate,
+      @required this.database,
+      @required this.uid})
+      : super(key: key);
+
+  final pickedDate;
+  final database;
+  final uid;
+
+  @override
+  _SystemArchiveInformationWidgetsState createState() =>
+      _SystemArchiveInformationWidgetsState();
+}
+
+class _SystemArchiveInformationWidgetsState
+    extends State<SystemArchiveInformationWidgets> {
+  String uid;
+  FirebaseDatabase database;
+
+  Map inverterHistoryChartDataObject;
+  Widget chartWidget;
+
+  /// Define the colour array for our live charts
+  Map<String, charts.Color> colourArray = {
+    'Solar Power': charts.MaterialPalette.yellow.shadeDefault,
+    'Battery Power': charts.MaterialPalette.green.shadeDefault,
+    'Grid Power': charts.MaterialPalette.blue.shadeDefault,
+    'Load Power': charts.MaterialPalette.red.shadeDefault
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    return chartWidget != null
+        ? chartWidget
+        : new SizedBox(
+            child: new Center(
+                child: const Center(child: const CircularProgressIndicator())),
+            height: MediaQuery.of(context).size.height / 4,
+          );
+  }
+
+  createSystemArchiveWidgets() async {
+    inverterHistoryChartDataObject = await _getInverterHistoryArrays();
+
+    chartWidget = conditionInverterHistoryChartData();
+
+    setState(() {});
+  }
+
+  Widget conditionInverterHistoryChartData() {
+    List<charts.Series<HistoryData, DateTime>> dataSeriesList = [];
+
+    /// Now we loop through our history Object to access all of the data arrays
+    inverterHistoryChartDataObject.forEach((dataArrayName, dataArray) {
+      dataSeriesList.add(new charts.Series<HistoryData, DateTime>(
+          id: dataArrayName,
+          colorFn: (_, __) => colourArray[dataArrayName],
+          data: dataArray,
+          domainFn: (HistoryData sales, _) => sales.date,
+          measureFn: (HistoryData sales, _) => sales.historyValue));
+    });
+
+    /// Finally, add all of the widgets we want into a list
+    return new SizedBox(
+      height: MediaQuery.of(context).size.height / 2.5,
+      child: new charts.TimeSeriesChart(
+        dataSeriesList,
+        animate: true,
+        dateTimeFactory: const charts.LocalDateTimeFactory(),
+        behaviors: [
+          new charts.SeriesLegend(
+            horizontalFirst: true,
+            desiredMaxColumns: 2,
+            position: charts.BehaviorPosition.top,
+          ),
+          new charts.PanAndZoomBehavior(),
+        ],
+        selectionModels: [
+          new charts.SelectionModelConfig(
+            type: charts.SelectionModelType.info,
+//            changedListener: _onSelectionChanged,
+          )
+        ],
+      ),
+    );
+  }
+
+  Future<Map> _getInverterHistoryArrays() async {
+    DateFormat dateFormatter = new DateFormat('yyyy-MM-dd');
+
+    FirebaseUser user = await FirebaseAuth.instance.currentUser();
+    var idToken = await user.getIdToken();
+    Map requestPayload = {
+      "date": dateFormatter.format(widget.pickedDate),
+      "idToken": idToken
+    };
+    var url = "http://203.32.104.46/delta_dashboard/archive_request";
+    HttpClient httpClient = new HttpClient();
+    HttpClientRequest request = await httpClient.postUrl(Uri.parse(url));
+    request.headers.set('content-type', 'application/json');
+    request.add(utf8.encode(json.encode(requestPayload)));
+    HttpClientResponse response = await request.close();
+    String tempReply = await response.transform(utf8.decoder).join();
+    httpClient.close();
+
+    Map decodedReply = json.decode(tempReply);
+
+    List timestamps = decodedReply['data_obj']['time']
+        .map((dateString) => DateTime.parse(dateString))
+        .toList();
+
+    List<HistoryData> solarGenerationData = [];
+    List<HistoryData> batteryPowerData = [];
+    List<HistoryData> gridPowerData = [];
+    List<HistoryData> loadPowerData = [];
+
+    for (int i = 0; i < timestamps.length; i++) {
+      if (i % 70 == 0) {
+        DateTime timestamp = timestamps[i];
+        solarGenerationData.add(new HistoryData(
+            timestamp,
+            double.parse(
+                decodedReply['data_obj']['dcp'][i].toStringAsFixed(2))));
+        batteryPowerData.add(new HistoryData(
+            timestamp,
+            double.parse(
+                decodedReply['data_obj']['btp'][i].toStringAsFixed(2))));
+        gridPowerData.add(new HistoryData(
+            timestamp,
+            double.parse(
+                decodedReply['data_obj']['utility_p'][i].toStringAsFixed(2))));
+        loadPowerData.add(new HistoryData(
+            timestamp,
+            double.parse(
+                decodedReply['data_obj']['ac2p'][i].toStringAsFixed(2))));
+      }
+    }
+    return {
+      'Solar Power': solarGenerationData,
+      'Battery Power': batteryPowerData,
+      'Grid Power': gridPowerData,
+      'Load Power': loadPowerData
+    };
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    print('System archive initialized');
+    uid = widget.uid;
+    database = widget.database;
+    createSystemArchiveWidgets();
   }
 }
 

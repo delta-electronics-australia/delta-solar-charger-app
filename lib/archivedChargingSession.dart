@@ -103,7 +103,7 @@ class ChargeSessionLine extends StatefulWidget {
 class _ChargeSessionLineState extends State<ChargeSessionLine> {
   TextStyle _headingFont = new TextStyle(fontSize: 20.0);
 
-  Widget chartObj;
+  Widget chartWidget;
 
   Map chargeSessionChartDataObject;
 
@@ -123,7 +123,7 @@ class _ChargeSessionLineState extends State<ChargeSessionLine> {
 
   @override
   Widget build(BuildContext context) {
-    return chartObj != null
+    return chartWidget != null
         ? new Center(
             child: new ListView(
             children: <Widget>[
@@ -137,7 +137,7 @@ class _ChargeSessionLineState extends State<ChargeSessionLine> {
                       style: _headingFont,
                       textAlign: TextAlign.center,
                     ))),
-                    chartObj,
+                    chartWidget,
                     new ListTile(
                         title: new Text(
                           selectedDate != ''
@@ -210,7 +210,7 @@ class _ChargeSessionLineState extends State<ChargeSessionLine> {
     chargeSessionChartDataObject = await _getChargingSessionArrays();
 
     /// Then we convert the map into a list of Widgets to display
-    chartObj = conditionChargingSessionChartData();
+    chartWidget = conditionChargingSessionChartData();
 
     setState(() {});
   }

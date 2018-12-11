@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
-import 'dart:collection';
 import 'dart:async';
-import 'dart:convert';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:smart_charging_app/change_settings.dart';
 import 'package:smart_charging_app/firebase_transfer.dart';
-
+import 'package:smart_charging_app/change_settings.dart';
+import 'package:smart_charging_app/solarChargerSettings.dart';
+import 'package:smart_charging_app/charging_archive.dart';
+import 'package:smart_charging_app/inverter_archive.dart';
 import 'package:charts_flutter/flutter.dart' as charts;
 import 'package:intl/intl.dart';
+import 'dart:collection';
 
 Future<FirebaseApp> main() async {
   final FirebaseApp app = await FirebaseApp.configure(
@@ -79,11 +80,40 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
             },
           ),
           ListTile(
+            title: const Text('System Archive'),
+            onTap: () {
+              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
+              var route = new MaterialPageRoute(
+                  builder: (BuildContext context) => new InverterArchive());
+              Navigator.of(context).push(route);
+            },
+          ),
+          ListTile(
+            title: const Text('Charging Session Archive'),
+            onTap: () {
+              var route = new MaterialPageRoute(
+                  builder: (BuildContext context) => new ChargingArchive());
+              Navigator.of(context).pop();
+              Navigator.of(context).push(route);
+            },
+          ),
+          ListTile(
             title: Text('Live Data Stream2'),
             onTap: () {
               Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
               var route = new MaterialPageRoute(
                   builder: (BuildContext context) => new DataStreamPage());
+              Navigator.of(context).push(route);
+            },
+          ),
+          ListTile(
+            title: Text('Change Solar Charging Settings'),
+            onTap: () {
+              print('moving to setings');
+              var route = new MaterialPageRoute(
+                  builder: (BuildContext context) =>
+                  new SolarChargerSettings());
+              Navigator.of(context).pop();
               Navigator.of(context).push(route);
             },
           ),
@@ -161,8 +191,8 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
               historyChartsDataObject['Grid Power'] = dataArray;
             } else if (dataName == "Load Power") {
               dataArray.removeAt(0);
-              dataArray.add(
-                  new HistoryData(newPayloadTime, newHistoryData['ac2p']));
+              dataArray
+                  .add(new HistoryData(newPayloadTime, newHistoryData['ac2p']));
               historyChartsDataObject['Load Power'] = dataArray;
             }
           });
