@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
 import 'package:smart_charging_app/authenticate.dart';
 import 'package:smart_charging_app/connect_bluetooth.dart';
 

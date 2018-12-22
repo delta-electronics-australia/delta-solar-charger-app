@@ -242,6 +242,10 @@ class _ChargeSessionLineState extends State<ChargeSessionLine> {
             position: charts.BehaviorPosition.top,
           ),
           new charts.PanAndZoomBehavior(),
+          new charts.ChartTitle('Power (kW)',
+              behaviorPosition: charts.BehaviorPosition.start,
+              titleOutsideJustification:
+                  charts.OutsideJustification.middleDrawArea),
         ],
         selectionModels: [
           new charts.SelectionModelConfig(
@@ -263,20 +267,41 @@ class _ChargeSessionLineState extends State<ChargeSessionLine> {
       "start_time": widget.startTime,
       "idToken": idToken
     };
-    var url = "http://203.32.104.46/delta_dashboard/charging_history_request2";
-    HttpClient httpClient = new HttpClient();
-    HttpClientRequest request = await httpClient.postUrl(Uri.parse(url));
-    request.headers.set('content-type', 'application/json');
-    request.add(utf8.encode(json.encode(requestPayload)));
-    HttpClientResponse response = await request.close();
-    String tempReply = await response.transform(utf8.decoder).join();
-    httpClient.close();
 
-    Map decodedReply = json.decode(tempReply);
-    List timestamps = decodedReply['data_obj']['labels']
-        .map((dateString) => DateTime.parse(dateString))
-        .toList();
+    List timestamps;
+    Map decodedReply;
+    try {
+      var url =
+          "http://203.32.104.46/delta_dashboard/charging_history_request2";
+      HttpClient httpClient = new HttpClient();
+      HttpClientRequest request = await httpClient.postUrl(Uri.parse(url));
+      request.headers.set('content-type', 'application/json');
+      request.add(utf8.encode(json.encode(requestPayload)));
+      HttpClientResponse response = await request.close();
+      String tempReply = await response.transform(utf8.decoder).join();
+      httpClient.close();
 
+      decodedReply = json.decode(tempReply);
+      timestamps = decodedReply['data_obj']['labels']
+          .map((dateString) => DateTime.parse(dateString))
+          .toList();
+    } catch (e) {
+      print(e);
+      var url =
+          "http://203.32.104.46/delta_dashboard/charging_history_request2";
+      HttpClient httpClient = new HttpClient();
+      HttpClientRequest request = await httpClient.postUrl(Uri.parse(url));
+      request.headers.set('content-type', 'application/json');
+      request.add(utf8.encode(json.encode(requestPayload)));
+      HttpClientResponse response = await request.close();
+      String tempReply = await response.transform(utf8.decoder).join();
+      httpClient.close();
+
+      decodedReply = json.decode(tempReply);
+      timestamps = decodedReply['data_obj']['labels']
+          .map((dateString) => DateTime.parse(dateString))
+          .toList();
+    }
     /// Initialize lists
     List<HistoryData> solarGenerationData = [];
     List<HistoryData> batteryPowerData = [];

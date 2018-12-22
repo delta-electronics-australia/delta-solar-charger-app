@@ -4,11 +4,6 @@ import 'dart:async';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:smart_charging_app/firebase_transfer.dart';
-import 'package:smart_charging_app/change_settings.dart';
-import 'package:smart_charging_app/liveDataStream.dart';
-import 'package:charts_flutter/flutter.dart' as charts;
-import 'package:intl/intl.dart';
 
 Future<FirebaseApp> main() async {
   final FirebaseApp app = await FirebaseApp.configure(
@@ -161,7 +156,7 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
       database
           .reference()
           .child('users/${user.uid}/evc_inputs/charging_modes')
-          .update({'authentication_required': newAuthenticationRequirement == 'true'});
+          .update({'authentication_required': newAuthenticationRequirement});
     });
 
     setState(() {

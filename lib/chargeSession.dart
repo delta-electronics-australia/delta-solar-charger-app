@@ -2,12 +2,9 @@ import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
 import 'dart:collection';
 import 'dart:async';
-import 'dart:convert';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:smart_charging_app/change_settings.dart';
-import 'package:smart_charging_app/firebase_transfer.dart';
 
 import 'package:charts_flutter/flutter.dart' as charts;
 import 'package:intl/intl.dart';

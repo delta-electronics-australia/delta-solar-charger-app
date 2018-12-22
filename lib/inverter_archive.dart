@@ -11,7 +11,6 @@ import 'package:smart_charging_app/firebase_transfer.dart';
 import 'package:smart_charging_app/liveDataStream.dart';
 import 'package:smart_charging_app/charging_archive.dart';
 import 'package:smart_charging_app/solarChargerSettings.dart';
-import 'package:smart_charging_app/archivedChargingSession.dart';
 
 import 'package:charts_flutter/flutter.dart' as charts;
 import 'package:intl/intl.dart';

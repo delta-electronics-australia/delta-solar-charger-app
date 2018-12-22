@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:smart_charging_app/authenticate.dart';
-import 'package:smart_charging_app/firebase_transfer.dart';
 import 'package:smart_charging_app/dashboard.dart';
 import 'package:smart_charging_app/initial_setup.dart';
 

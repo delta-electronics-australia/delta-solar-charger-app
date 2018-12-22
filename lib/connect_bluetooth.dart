@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_blue/flutter_blue.dart';
 import 'dart:async';
 import 'dart:convert';
-import 'package:smart_charging_app/main.dart';
 
 class ConnectBluetooth extends StatefulWidget {
   final String email;

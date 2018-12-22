@@ -16,7 +16,6 @@ import 'package:intl/intl.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/scheduler.dart';
 
-
 Future<FirebaseApp> main() async {
   final FirebaseApp app = await FirebaseApp.configure(
     name: 'smart-charging-app',
@@ -1020,7 +1019,11 @@ class _SolarGenerationHistoryCardState
                   defaultInteractions: true,
                   behaviors: [
                     new charts.SelectNearest(),
-                    new charts.DomainHighlighter()
+                    new charts.DomainHighlighter(),
+                    new charts.ChartTitle('Energy (kWh)',
+                        behaviorPosition: charts.BehaviorPosition.start,
+                        titleOutsideJustification:
+                            charts.OutsideJustification.middleDrawArea)
                   ],
                   selectionModels: [
                     new charts.SelectionModelConfig(
@@ -1170,7 +1173,7 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
           textAlign: TextAlign.center,
         ))),
         new SizedBox(
-          height: 200.0,
+          height: 300.0,
           child: dailyChargerBreakdownSeriesList == null
               ? new Center(
                   child: const Center(child: const CircularProgressIndicator()))
@@ -1186,7 +1189,16 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
                   domainAxis:
                       new charts.DateTimeAxisSpec(usingBarRenderer: true),
                   defaultInteractions: true,
-                  behaviors: [new charts.SeriesLegend()],
+                  behaviors: [
+                    new charts.SeriesLegend(
+                      position: charts.BehaviorPosition.inside,
+                      desiredMaxColumns: 1,
+                    ),
+                    new charts.ChartTitle('Energy (kWh)',
+                        behaviorPosition: charts.BehaviorPosition.start,
+                        titleOutsideJustification:
+                            charts.OutsideJustification.middleDrawArea)
+                  ],
                   selectionModels: [
                     new charts.SelectionModelConfig(
                       type: charts.SelectionModelType.info,
@@ -1223,7 +1235,6 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
 
   /// This function is a callback for when a point is selected on the chart
   _onSelectionChanged(charts.SelectionModel model) {
-
     final selectedDatum = model.selectedDatum;
 
     /// Date will be the date selected on the solar generation bar chart
@@ -1304,6 +1315,7 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
     if (this.mounted) {
       setState(() {
         dailyChargerBreakdownSeriesList = seriesArray;
+        print('sup mates');
         print(dailyChargerBreakdownSeriesList);
       });
     }
