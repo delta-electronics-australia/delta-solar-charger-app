@@ -49,7 +49,7 @@ class _ConnectBluetooth extends State<ConnectBluetooth> {
     print(widget.wifipw);
     return new Scaffold(
         appBar: new AppBar(
-          title: Text("Welcome to the Initial Setup"),
+          title: const Text("Welcome to the Initial Setup"),
         ),
         body: new Center(
             child: new Column(

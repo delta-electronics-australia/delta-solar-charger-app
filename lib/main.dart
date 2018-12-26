@@ -64,10 +64,10 @@ class _LandingPageState extends State<LandingPage> {
       loggingIn = true;
     });
 
-//    user.email = email;
-//    user.password = password;
-    user.email = 'jgv115@gmail.com';
-    user.password = 'test123';
+    user.email = email;
+    user.password = password;
+//    user.email = 'test123@gmail.com';
+//    user.password = 'test123';
 
     userAuth.verifyUser(user).then((onValue) {
       print(onValue);
@@ -127,8 +127,7 @@ class _LandingPageState extends State<LandingPage> {
                                 controller: _email,
                                 focusNode: _emailFocus,
                                 onSubmitted: (String value) {
-                                  FocusScope
-                                      .of(context)
+                                  FocusScope.of(context)
                                       .requestFocus(_passFocus);
                                 },
                                 decoration:
@@ -158,7 +157,7 @@ class _LandingPageState extends State<LandingPage> {
                           new RaisedButton(
                             onPressed: handleInitialSetup,
                             child: Text("Press here for initial setup"),
-                          )
+                          ),
                         ])),
         ));
   }

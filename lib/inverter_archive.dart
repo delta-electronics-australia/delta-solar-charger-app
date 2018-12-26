@@ -187,6 +187,15 @@ class _InverterArchiveState extends State<InverterArchive> {
     List sortedValidDate = validDates
       ..sort((date1, date2) => date1.compareTo(date2));
 
+    // TOdo: make this work
+//    /// If a date has already been picked - then we need to dispose of the
+//    /// previous widgets
+//    if (pickedDate != null) {
+//      pickedDate = null;
+//      setState(() {});
+//    }
+
+    /// If no date has currently been picked then
     pickedDate = await showDatePicker(
         context: context,
         initialDate: sortedValidDate.last,
@@ -273,6 +282,9 @@ class _SystemArchiveInformationWidgetsState
   Map inverterHistoryChartDataObject;
   Widget chartWidget;
 
+  Map<String, double> selectedPoint = {};
+  String selectedDate = '';
+
   /// Define the colour array for our live charts
   Map<String, charts.Color> colourArray = {
     'Solar Power': charts.MaterialPalette.yellow.shadeDefault,
@@ -314,28 +326,93 @@ class _SystemArchiveInformationWidgetsState
     });
 
     /// Finally, add all of the widgets we want into a list
-    return new SizedBox(
-      height: MediaQuery.of(context).size.height / 2.5,
-      child: new charts.TimeSeriesChart(
-        dataSeriesList,
-        animate: true,
-        dateTimeFactory: const charts.LocalDateTimeFactory(),
-        behaviors: [
-          new charts.SeriesLegend(
-            horizontalFirst: true,
-            desiredMaxColumns: 2,
-            position: charts.BehaviorPosition.top,
+    return new Column(
+      children: <Widget>[
+        new SizedBox(
+          height: MediaQuery.of(context).size.height / 2.5,
+          child: new charts.TimeSeriesChart(
+            dataSeriesList,
+            animate: true,
+            dateTimeFactory: const charts.LocalDateTimeFactory(),
+            behaviors: [
+              new charts.SeriesLegend(
+                horizontalFirst: true,
+                desiredMaxColumns: 2,
+                position: charts.BehaviorPosition.top,
+              ),
+              new charts.PanAndZoomBehavior(),
+            ],
+            selectionModels: [
+              new charts.SelectionModelConfig(
+                type: charts.SelectionModelType.info,
+                changedListener: _onSelectionChanged,
+              )
+            ],
           ),
-          new charts.PanAndZoomBehavior(),
-        ],
-        selectionModels: [
-          new charts.SelectionModelConfig(
-            type: charts.SelectionModelType.info,
-//            changedListener: _onSelectionChanged,
-          )
-        ],
-      ),
+        ),
+
+        /// Display the selected date
+        new ListTile(
+            title: new Text(
+              selectedDate != '' ? 'Time' : 'Click the chart to view the data',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            trailing: new Text(selectedDate)),
+        new ListTile(
+          title: new Text('su2p!!'),
+        ),
+
+        /// Display all of the values from that selected date
+        ListView.builder(
+            shrinkWrap: true,
+            itemCount: selectedPoint.keys.toList(growable: false).length,
+            itemBuilder: (context, index) {
+              print(index);
+
+              /// First get the field name (solar power, grid power etc...)
+              String fieldName =
+                  selectedPoint.keys.toList(growable: false)[index];
+
+              /// Now we can return a ListTile with the field name and the value
+              /// of that field name
+              return ListTile(
+                title: new Text(
+                  '$fieldName',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                trailing: new Text(
+                    '${selectedPoint[fieldName].toStringAsFixed(2)} kW'),
+              );
+            })
+      ],
     );
+  }
+
+  _onSelectionChanged(charts.SelectionModel model) {
+    final selectedDatum = model.selectedDatum;
+
+    DateTime time;
+
+    /// If the selected point is not empty
+    if (selectedDatum.isNotEmpty) {
+      /// Define time as the DateTime object of our selected point
+      time = selectedDatum.first.datum.date;
+
+      /// Now loop through all of the values
+      selectedDatum.forEach((charts.SeriesDatum datumPair) {
+        /// Put data into a Map: {seriesName: seriesValue}
+        selectedPoint[datumPair.series.displayName] =
+            datumPair.datum.historyValue;
+      });
+    }
+
+    /// Now create our final selectedDate string
+    var formatter = new DateFormat('yyyy-MM-dd HH:mm:ss');
+    selectedDate = '${formatter.format(time)}';
+
+    setState(() {
+      print(selectedPoint);
+    });
   }
 
   Future<Map> _getInverterHistoryArrays() async {

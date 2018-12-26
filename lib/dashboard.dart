@@ -1191,7 +1191,7 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
                   defaultInteractions: true,
                   behaviors: [
                     new charts.SeriesLegend(
-                      position: charts.BehaviorPosition.inside,
+                      position: charts.BehaviorPosition.top,
                       desiredMaxColumns: 1,
                     ),
                     new charts.ChartTitle('Energy (kWh)',
