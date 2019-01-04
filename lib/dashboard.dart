@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:smart_charging_app/main.dart';
 import 'package:smart_charging_app/firebase_transfer.dart';
 import 'package:smart_charging_app/change_settings.dart';
 import 'package:smart_charging_app/liveDataStream.dart';
@@ -83,7 +84,7 @@ class _DashboardState extends State<Dashboard> {
 
   List listOfTrailingEnergy = [];
 
-//  var solarGenerationData = new List();
+  String lastUpdatedDatetime;
 
   @override
   Widget build(BuildContext context) {
@@ -291,6 +292,11 @@ class _DashboardState extends State<Dashboard> {
                   ),
                   new SolarGenerationHistoryCard(),
                   new DailyChargerBreakdownCard(),
+                  new Text(
+                    'Last updated: $lastUpdatedDatetime',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 10),
+                  )
                 ],
               )));
   }
@@ -323,6 +329,8 @@ class _DashboardState extends State<Dashboard> {
           snapshot['utility_p_export_t'].toStringAsFixed(2) + 'kWh';
       liveAnalytics['utility_p_import_t'] =
           (snapshot['utility_p_import_t'] * -1).toStringAsFixed(2) + 'kWh';
+
+      lastUpdatedDatetime = snapshot['time'];
       setState(() {
         loadingData = false;
       });
@@ -467,7 +475,10 @@ class _DashboardState extends State<Dashboard> {
     print('Signed out');
     Navigator.of(context)
         .pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
-    //    Navigator.popUntil(context, ModalRoute.withName('/'));
+//        Navigator.popUntil(context, ModalRoute.withName('/'));
+//    var route = new MaterialPageRoute(
+//        builder: (BuildContext context) => new LandingPage());
+//    Navigator.of(context).pushReplacement(route);
   }
 
   @override
