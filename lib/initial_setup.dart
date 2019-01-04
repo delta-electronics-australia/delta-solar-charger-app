@@ -227,52 +227,194 @@ class SendWiFiPayloadAndroid extends StatefulWidget {
 }
 
 class _SendWiFiPayloadAndroidState extends State<SendWiFiPayloadAndroid> {
+  bool processCompleted = false;
+  String progressString = "";
+  IconData progressIcon;
+
   @override
   Widget build(BuildContext context) {
     return new Scaffold(
       appBar: new AppBar(
         title: const Text('Connect Wi-Fi'),
       ),
-      body: new Column(
-        children: <Widget>[],
-      ),
+      body: new Center(
+          child: processCompleted
+              ? new Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    new Icon(
+                      Icons.check_circle_outline,
+                      size: MediaQuery.of(context).size.width / 1.5,
+                    ),
+                    new Text(
+                      'Solar Charger Initialisation Complete. You may now login to your Delta Solar Charger Account',
+                      style: TextStyle(fontSize: 20.0),
+                      textAlign: TextAlign.center,
+                    ),
+                    new Padding(padding: const EdgeInsets.all(25)),
+                    new RaisedButton(
+                      onPressed: () {
+                        Navigator.popUntil(context, ModalRoute.withName('/'));
+                      },
+                      child: new Text('Return to login page'),
+                    ),
+                    new Padding(
+                        padding: new EdgeInsets.only(
+                            top: MediaQuery.of(context).size.height / 3.2))
+                  ],
+                )
+              : new Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    new Icon(
+                      progressIcon,
+                      size: MediaQuery.of(context).size.width / 1.5,
+                    ),
+                    new Text(
+                      progressString,
+                      style: TextStyle(fontSize: 20.0),
+                      textAlign: TextAlign.center,
+                    ),
+                    new Padding(padding: const EdgeInsets.all(25)),
+                    const Center(child: const CircularProgressIndicator()),
+                    new Padding(
+                        padding: new EdgeInsets.only(
+                            top: MediaQuery.of(context).size.height / 3.2))
+                  ],
+                )),
     );
   }
 
-  loadWifiList() async {
-    List<WifiNetwork> htResultNetwork;
-    try {
-      htResultNetwork = await WiFiForIoTPlugin.loadWifiList();
-    } on PlatformException {
-      htResultNetwork = new List<WifiNetwork>();
+  transmitWifiData() async {
+    /// Now that we are connected, we can now send the payload to the controller
+
+    print('Connected to the Solar Charger. Transmitting data now...');
+    bool transmissionSuccess = false;
+
+    for (int i = 0; i < 10; i++) {
+      print('Attempt $i in transmitting payload to Solar Charger');
+
+      transmissionSuccess = await sendInitialSetupPostRequest();
+
+      if (transmissionSuccess == true) {
+        print('Initialization complete!');
+        setState(() {
+          processCompleted = true;
+        });
+        break;
+      }
+
+      /// Sleep for one second before trying to transmit again
+      sleep(Duration(seconds: 1));
     }
 
-    /// Loop through all of the discovered networks to see if we can find a
-    /// Delta Solar Charger
-    for (WifiNetwork network in htResultNetwork) {
-      print(network.ssid);
-      print(network.password);
-      if (network.ssid.contains('177h7f')) {
-        // Todo: put a confirmation message here
-        print('Found a Delta Solar Charger! Trying to connect...');
-        bool result = await WiFiForIoTPlugin.connect(network.ssid,
-            password: '6050751829', security: NetworkSecurity.WPA);
-        print(result);
+    if (!transmissionSuccess) {
+      print('Transmission failed 10 times...');
+      progressIcon = Icons.sync_problem;
+      progressString =
+      'Transmission unsuccessful. Please go back and try again';
+    }
+  }
+
+  connectToWifi(String ssid) async {
+    /// This functions connects the app to a Solar Charger with a SSID
+
+    print('Found a Delta Solar Charger! Trying to connect to $ssid');
+
+    setState(() {
+      progressIcon = Icons.signal_wifi_4_bar;
+      progressString = 'Solar Charger found. Attemping to connect...';
+    });
+    bool wifiConnectionResult = false;
+
+    for (int i = 0; i < 10; i++) {
+      print('Attempt $i at connecting to Solar Charger');
+
+      /// Try to connect to the discovered Solar Charger Wi-Fi AP
+      wifiConnectionResult = await WiFiForIoTPlugin.connect(ssid,
+          password: '1234567890', security: NetworkSecurity.WPA);
+
+      if (wifiConnectionResult == true) {
+        setState(() {
+          progressIcon = Icons.sync;
+          progressString =
+              'Connection successful. Initializing Solar Charger...';
+        });
+        break;
+      }
+
+      sleep(Duration(seconds: 1));
+    }
+
+    print('Wifi connection result: $wifiConnectionResult');
+
+    if (wifiConnectionResult) {
+      transmitWifiData();
+    } else {
+      setState(() {
+        progressIcon = Icons.signal_wifi_off;
+        progressString =
+            'Connection unsuccessful. Please go back and try again';
+      });
+    }
+  }
+
+  handleInitialSetup() async {
+    setState(() {
+      progressIcon = Icons.signal_wifi_off;
+      progressString = 'Finding a Delta Solar Charger...';
+    });
+
+    bool wifiNetworkFound = false;
+    String ssid;
+
+    /// Try three times to find the Solar Charger Wi-Fi network
+    for (int i = 0; i < 3; i++) {
+      print('Attempt $i at finding a Solar Charger');
+
+      List<WifiNetwork> htResultNetwork;
+      try {
+        htResultNetwork = await WiFiForIoTPlugin.loadWifiList();
+      } on PlatformException {
+        htResultNetwork = new List<WifiNetwork>();
+      }
+
+      /// Loop through Wi-Fi networks to see if we can find a Delta Solar Charger
+      for (WifiNetwork network in htResultNetwork) {
+        print(network.ssid);
+
+        // Todo: change the SSID to Delta_Solar_Charger_xx
+        if (network.ssid.contains('Delta_Solar_Charger')) {
+          wifiNetworkFound = true;
+          ssid = network.ssid;
+
+          /// Break out of the SSID search process
+          break;
+        }
+      }
+
+      /// If we have found a network then we can break out of our loop
+      if (wifiNetworkFound) {
         break;
       }
     }
 
-    /// Now that we are connected, we can now send the payload to the controller
-    print('Connected to the Solar Charger. Transmitting data now...');
-    bool result = await sendInitialSetupPostRequest();
-    print(result);
+    if (wifiNetworkFound) {
+      connectToWifi(ssid);
+    } else {
+      setState(() {
+        progressIcon = Icons.signal_wifi_off;
+        progressString =
+            'Solar Charger not found. Please press back and try again.';
+      });
+    }
   }
 
   @override
   void initState() {
     super.initState();
 
-    loadWifiList();
+    handleInitialSetup();
   }
 }
 
@@ -299,23 +441,46 @@ class _SendWifiPayloadiOSState extends State<SendWifiPayloadiOS> {
 
 Future<bool> sendInitialSetupPostRequest() async {
   Map requestPayload = {
-    "flutter": "hello world",
-    'wififlutter': 'gitgit',
-    'hooha!': 'test2'
+    "firebase_email": "jgv115@gmail.com",
+    'firebase_password': 'test123',
   };
 
   // Todo: this URL needs to change: will be all the same
-  String url = "http://192.168.0.14:5000/delta_solar_charger_initial_setup";
+  String url = "http://192.168.10.1:5000/delta_solar_charger_initial_setup";
   HttpClient httpClient = new HttpClient();
-  HttpClientRequest request = await httpClient.postUrl(Uri.parse(url));
 
-  request.headers.set('content-type', 'application/json');
-  request.add(utf8.encode(json.encode(requestPayload)));
-  HttpClientResponse response = await request.close();
-  String tempReply = await response.transform(utf8.decoder).join();
-  httpClient.close();
+  /// Set our client timeout to 10 seconds.
+  httpClient.connectionTimeout = const Duration(seconds: 5);
+  String tempReply;
+
+  try {
+    HttpClientRequest request = await httpClient.postUrl(Uri.parse(url));
+
+    request.headers.set('content-type', 'application/json');
+    request.add(utf8.encode(json.encode(requestPayload)));
+    HttpClientResponse response = await request.close();
+    tempReply = await response.transform(utf8.decoder).join();
+    httpClient.close();
+  } catch (e) {
+    print('Got an error!');
+    print(e);
+    return false;
+  }
 
   // Todo: have some test here to see if it's all good
-  print(tempReply);
-  return true;
+  bool success;
+
+  /// Check if we got any reply from the solar charger
+  if (tempReply != null) {
+    /// If we got a reply then decode it and make sure the POST was successful
+    Map parsedReply = json.decode(tempReply);
+
+    if (parsedReply['success'] == true) {
+      success = true;
+    }
+  } else {
+    success = false;
+  }
+
+  return success;
 }

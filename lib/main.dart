@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:smart_charging_app/authenticate.dart';
 import 'package:smart_charging_app/dashboard.dart';
 import 'package:smart_charging_app/initial_setup.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 void main() => runApp(new MyApp());
 
@@ -14,7 +15,27 @@ class MyApp extends StatelessWidget {
         theme: new ThemeData(
           primarySwatch: Colors.blue,
         ),
-        home: new LandingPage(title: 'Delta Solar Charger'),
+//        home: FutureBuilder(
+//            future: FirebaseAuth.instance.currentUser(),
+//            builder:
+//                (BuildContext context, AsyncSnapshot<FirebaseUser> snapshot) {
+//              print(snapshot.connectionState);
+//              switch (snapshot.connectionState) {
+//                case ConnectionState.none:
+//                case ConnectionState.waiting:
+//                  return CircularProgressIndicator();
+//                default:
+//                  if (snapshot.data == null) {
+//                    return LandingPage();
+//                  } else {
+//                    var route = new MaterialPageRoute(
+//                        builder: (BuildContext context) => new LandingPage());
+//                    Navigator.of(context).push(route);
+//                    return Dashboard();
+//                  }
+//              }
+//            }),
+        home: new LandingPage(),
         routes: <String, WidgetBuilder>{
 //          "/": (BuildContext context) => new LandingPage(),
           "/Dashboard": (BuildContext context) => new Dashboard(),
@@ -24,14 +45,7 @@ class MyApp extends StatelessWidget {
 }
 
 class LandingPage extends StatefulWidget {
-  LandingPage({Key key, this.title}) : super(key: key);
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+  LandingPage({Key key}) : super(key: key);
 
   @override
   _LandingPageState createState() => new _LandingPageState();
@@ -105,7 +119,7 @@ class _LandingPageState extends State<LandingPage> {
 
     return new Scaffold(
         appBar: new AppBar(
-          title: new Text(widget.title),
+          title: new Text('Delta Solar Charger'),
         ),
         body: new Container(
           padding: const EdgeInsets.only(left: 15.0, right: 15.0),
@@ -160,5 +174,13 @@ class _LandingPageState extends State<LandingPage> {
                           ),
                         ])),
         ));
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
+      print(user);
+    });
   }
 }
