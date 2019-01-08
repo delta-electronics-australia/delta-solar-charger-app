@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+
 import 'package:smart_charging_app/authenticate.dart';
 import 'package:smart_charging_app/dashboard.dart';
 import 'package:smart_charging_app/initial_setup.dart';
@@ -15,26 +17,6 @@ class MyApp extends StatelessWidget {
         theme: new ThemeData(
           primarySwatch: Colors.blue,
         ),
-//        home: FutureBuilder(
-//            future: FirebaseAuth.instance.currentUser(),
-//            builder:
-//                (BuildContext context, AsyncSnapshot<FirebaseUser> snapshot) {
-//              print(snapshot.connectionState);
-//              switch (snapshot.connectionState) {
-//                case ConnectionState.none:
-//                case ConnectionState.waiting:
-//                  return CircularProgressIndicator();
-//                default:
-//                  if (snapshot.data == null) {
-//                    return LandingPage();
-//                  } else {
-//                    var route = new MaterialPageRoute(
-//                        builder: (BuildContext context) => new LandingPage());
-//                    Navigator.of(context).push(route);
-//                    return Dashboard();
-//                  }
-//              }
-//            }),
         home: new LandingPage(),
         routes: <String, WidgetBuilder>{
 //          "/": (BuildContext context) => new LandingPage(),
@@ -72,16 +54,22 @@ class _LandingPageState extends State<LandingPage> {
     Navigator.pushNamed(context, "/InitialSetup");
   }
 
+  Future<Null> _signOut() async {
+    await FirebaseAuth.instance.signOut();
+    print('Signed out');
+//    setState(() {});
+  }
+
   void _handleLogin() {
     // Set loggingIn to true, so we have a circular progress icon
     setState(() {
       loggingIn = true;
     });
 
-    user.email = email;
-    user.password = password;
-//    user.email = 'test123@gmail.com';
-//    user.password = 'test123';
+//    user.email = email;
+//    user.password = password;
+    user.email = 'jgv115@gmail.com';
+    user.password = 'test123';
 
     userAuth.verifyUser(user).then((onValue) {
       print(onValue);
@@ -92,7 +80,7 @@ class _LandingPageState extends State<LandingPage> {
         showDialog(
             context: context,
             barrierDismissible: false,
-            builder: (BuildContext) {
+            builder: (buildContext) {
               return new AlertDialog(
                 title: Text('Sign in Error'),
                 content: Text(onValue),
@@ -125,62 +113,114 @@ class _LandingPageState extends State<LandingPage> {
           padding: const EdgeInsets.only(left: 15.0, right: 15.0),
 //          color: Colors.blue,
 
-          child: new Center(
-              child: loggingIn
-                  ? const Center(child: const CircularProgressIndicator())
-                  : new Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: <Widget>[
-                          new Text("Please Login", style: _headingFont),
-                          new Padding(
-                            padding: const EdgeInsets.only(top: 30.0),
-                          ),
-                          new ListTile(
-                              leading: const Icon(Icons.email),
-                              title: new TextField(
-                                controller: _email,
-                                focusNode: _emailFocus,
-                                onSubmitted: (String value) {
-                                  FocusScope.of(context)
-                                      .requestFocus(_passFocus);
-                                },
-                                decoration:
-                                    new InputDecoration(hintText: "Email"),
-                              )),
-                          new ListTile(
-                              leading: const Icon(Icons.lock),
-                              title: new TextField(
-                                controller: _pass,
-                                focusNode: _passFocus,
-                                onSubmitted: (String value) {
-                                  _handleLogin();
-                                },
-                                decoration:
-                                    new InputDecoration(hintText: "Password"),
-                                obscureText: true,
-                              )),
-                          new Padding(
-                            padding: const EdgeInsets.all(15.0),
-                          ),
+          child: StreamBuilder(
+              stream: FirebaseAuth.instance.onAuthStateChanged,
+              builder:
+                  (BuildContext context, AsyncSnapshot<FirebaseUser> snapshot) {
+                print(snapshot);
+                switch (snapshot.connectionState) {
+                  case ConnectionState.none:
+                  case ConnectionState.waiting:
+                    return CircularProgressIndicator();
+
+                  default:
+
+                    /// If the currentUser() returns and there is no user data
+                    if (snapshot.data == null) {
+                      /// Then we know that there is no existing user
+                      print('User doesnt exist');
+                      print(snapshot.data);
+                      return new Center(
+                          child: loggingIn
+                              ? const Center(
+                                  child: const CircularProgressIndicator())
+                              : new Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: <Widget>[
+                                      new Text("Please Login",
+                                          style: _headingFont),
+                                      new Padding(
+                                        padding:
+                                            const EdgeInsets.only(top: 30.0),
+                                      ),
+                                      new ListTile(
+                                          leading: const Icon(Icons.email),
+                                          title: new TextField(
+                                            controller: _email,
+//                                            focusNode: _emailFocus,
+//                                            onSubmitted: (String value) {
+//                                              FocusScope.of(context)
+//                                                  .requestFocus(_passFocus);
+//                                            },
+                                            decoration: new InputDecoration(
+                                                hintText: "Email"),
+                                          )),
+                                      new ListTile(
+                                          leading: const Icon(Icons.lock),
+                                          title: new TextField(
+                                            controller: _pass,
+//                                            focusNode: _passFocus,
+//                                            onSubmitted: (String value) {
+//                                              _handleLogin();
+//                                            },
+                                            decoration: new InputDecoration(
+                                                hintText: "Password"),
+                                            obscureText: true,
+                                          )),
+                                      new Padding(
+                                        padding: const EdgeInsets.all(15.0),
+                                      ),
+                                      new RaisedButton(
+                                        child: new Text("Login"),
+                                        onPressed: _handleLogin,
+                                        padding:
+                                            const EdgeInsets.only(top: 1.0),
+                                      ),
+                                      new Padding(
+                                          padding: EdgeInsets.all(15.0)),
+                                      new RaisedButton(
+                                        onPressed: handleInitialSetup,
+                                        child: Text(
+                                            "Press here for initial setup"),
+                                      ),
+                                    ]));
+                    } else {
+                      print('User exists!');
+                      print(snapshot.data);
+                      return new Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
                           new RaisedButton(
-                            child: new Text("Login"),
-                            onPressed: _handleLogin,
-                            padding: const EdgeInsets.only(top: 1.0),
+                            onPressed: () {
+                              var route = new MaterialPageRoute(
+                                  builder: (BuildContext context) =>
+                                      new Dashboard());
+                              Navigator.of(context).push(route);
+                            },
+                            child: new Text(
+                                'Login as ${snapshot.data.displayName}'),
                           ),
-                          new Padding(padding: EdgeInsets.all(15.0)),
-                          new RaisedButton(
-                            onPressed: handleInitialSetup,
-                            child: Text("Press here for initial setup"),
-                          ),
-                        ])),
+                          new Align(
+                            alignment: Alignment.bottomCenter,
+                            child: new FlatButton(
+                                onPressed: () {
+                                  _email.clear();
+                                  _pass.clear();
+                                  _signOut();
+                                },
+                                child: const Text(
+                                    'Not you? Log into a different account')),
+                          )
+                        ],
+                      );
+                    }
+                }
+              }),
         ));
   }
 
   @override
   void initState() {
     super.initState();
-    FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
-      print(user);
-    });
   }
 }

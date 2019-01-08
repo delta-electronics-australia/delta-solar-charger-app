@@ -44,8 +44,10 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
   DatabaseReference _historyRef;
   StreamSubscription<Event> _historyDataSubscription;
 
-  List<Widget> chartObjList;
+  Widget liveSystemDataWidget;
   Map historyChartsDataObject;
+
+  String lastUpdatedDatetime;
 
   /// Define the colour array for our live charts
   Map<String, charts.Color> colourArray = {
@@ -112,7 +114,7 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
               print('moving to setings');
               var route = new MaterialPageRoute(
                   builder: (BuildContext context) =>
-                  new SolarChargerSettings());
+                      new SolarChargerSettings());
               Navigator.of(context).pop();
               Navigator.of(context).push(route);
             },
@@ -133,10 +135,10 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
             onTap: _signOut,
           ),
         ])),
-        body: chartObjList == null
+        body: liveSystemDataWidget == null
             ? new Center(
                 child: const Center(child: const CircularProgressIndicator()))
-            : new Center(child: new ListView(children: chartObjList)));
+            : liveSystemDataWidget);
   }
 
   Future<Null> _signOut() async {
@@ -151,6 +153,9 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
 
     /// Initialize our date formatter
     var dateFormatter = new DateFormat('yyyy-MM-dd');
+
+    /// Initialize our last updated date time format
+    DateFormat lastUpdatedDatetimeFormat = new DateFormat('yyyy-MM-dd H:mm:ss');
 
     /// Start a history data stream
     _historyDataSubscription =
@@ -196,10 +201,12 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
               historyChartsDataObject['Load Power'] = dataArray;
             }
           });
+          lastUpdatedDatetime = lastUpdatedDatetimeFormat.format(
+              DateTime.parse('${currentDate}T${newHistoryData['time']}'));
         }
       }
 
-      chartObjList = conditionHistoryChartsData();
+      liveSystemDataWidget = conditionHistoryChartsData();
       setState(() {});
     });
   }
@@ -212,12 +219,12 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
     historyChartsDataObject = _getHistoryChartsArrays(historyPayload);
 
     /// Then we convert the map into a list of Widgets to display
-    chartObjList = conditionHistoryChartsData();
+    liveSystemDataWidget = conditionHistoryChartsData();
 
     setState(() {});
   }
 
-  List<Widget> conditionHistoryChartsData() {
+  Widget conditionHistoryChartsData() {
     List<Widget> tempChartObjList = [];
 
     // Now we loop through our history Object to access all of the data arrays
@@ -251,7 +258,18 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
         ],
       )));
     });
-    return tempChartObjList;
+
+    /// Now add the last updated datetime string at the bottom
+    tempChartObjList.add(new Text(
+      'Last updated: $lastUpdatedDatetime',
+      style: TextStyle(fontSize: 10),
+      textAlign: TextAlign.center,
+    ));
+
+    liveSystemDataWidget =
+        new Center(child: new ListView(children: tempChartObjList));
+
+    return liveSystemDataWidget;
   }
 
   Future<Map> grabInitialHistoryData(app) async {
@@ -271,7 +289,7 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
     return historyPayload;
   }
 
-  static Map _getHistoryChartsArrays(historyPayload) {
+  Map _getHistoryChartsArrays(historyPayload) {
     /// Define our list of data objects
     List<HistoryData> solarGenerationData = new List();
     List<HistoryData> batteryPowerData = new List();
@@ -306,8 +324,11 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
           key: (k) => k,
           value: (k) => historyPayload[k]);
 
-      var dateFormatter = new DateFormat('yyyy-MM-dd');
+      DateFormat dateFormatter = new DateFormat('yyyy-MM-dd');
       String currentDate = dateFormatter.format(new DateTime.now());
+
+      DateFormat lastUpdatedDatetimeFormat =
+          new DateFormat('yyyy-MM-dd H:mm:ss');
 
       /// Loop through our Map and add all of the values into the data list
       historyPayloadSorted.forEach((key, historyPayloadEntry) {
@@ -326,8 +347,12 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
         loadPowerData.add(new HistoryData(
             DateTime.parse('${currentDate}T${historyPayloadEntry['time']}'),
             historyPayloadEntry['ac2p']));
+
+        lastUpdatedDatetime = lastUpdatedDatetimeFormat.format(
+            DateTime.parse('${currentDate}T${historyPayloadEntry['time']}'));
       });
     }
+
     return {
       'Solar Power': solarGenerationData,
       "Battery Power": batteryPowerData,

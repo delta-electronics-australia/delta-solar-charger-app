@@ -196,30 +196,262 @@ class _SelectConnectionPageState extends State<SelectConnectionPage> {
   }
 
   void connectionSelected() {
-    Platform.isAndroid
-        ? Navigator.of(context).push(new MaterialPageRoute(
-            builder: (BuildContext context) => new SendWiFiPayloadAndroid(
-                  connectionMethod: '3G',
-                  connectionPayload: {},
-                ),
-          ))
-        : Navigator.of(context).push(new MaterialPageRoute(
-            builder: (BuildContext context) => new SendWifiPayloadiOS(
-                  connectionMethod: '3G',
-                  connectionPayload: {},
-                ),
-          ));
+    Navigator.of(context).push(new MaterialPageRoute(
+      builder: (BuildContext context) => new ScanWifiNetworks(
+          connectionMethod: '3G',
+          connectionPayload: {},
+          firebaseEmail: widget.firebaseEmail,
+          firebasePassword: widget.firebasePassword),
+    ));
+  }
+}
+
+class ScanWifiNetworks extends StatefulWidget {
+  final String connectionMethod;
+  final Map connectionPayload;
+  final String firebaseEmail;
+  final String firebasePassword;
+
+  ScanWifiNetworks({
+    Key key,
+    this.connectionMethod,
+    this.connectionPayload,
+    this.firebaseEmail,
+    this.firebasePassword,
+  }) : super(key: key);
+
+  @override
+  _ScanWifiNetworksState createState() => _ScanWifiNetworksState();
+}
+
+class _ScanWifiNetworksState extends State<ScanWifiNetworks> {
+  /// Boolean value that tells us whether or not we have discovered any solar chargers
+  bool displayScanResults = false;
+
+  /// Boolean variable that tells us whether we're still on the scan page
+  bool disposed = false;
+
+  String progressString = "";
+  IconData progressIcon;
+
+  /// Initialize the list of solar charger SSIDs
+  Map<String, bool> solarChargerMap = {};
+
+  /// Intialize the currently selected solar charger
+  String currentSelectedSolarCharger;
+
+  /// Initialize the user selected SSID
+  String selectedSSID;
+
+  @override
+  Widget build(BuildContext context) {
+    return new Scaffold(
+        appBar: new AppBar(
+          title: const Text('Scan for Delta Solar Chargers'),
+        ),
+        body: displayScanResults
+            ? new Column(
+                mainAxisSize: MainAxisSize.max,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  new Padding(
+                      padding: const EdgeInsets.only(top: 15, bottom: 15),
+                      child: new Text(
+                        'Please Select the Correct Solar Charger:',
+                        style: TextStyle(fontSize: 20.0),
+                        textAlign: TextAlign.center,
+                      )),
+                  ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: solarChargerMap.keys.toList().length,
+                      itemBuilder: (context, index) {
+                        List solarChargerList = solarChargerMap.keys.toList();
+
+                        /// Use a GestureDetector to wrap the card to detect a tap
+                        return new GestureDetector(
+                          child: new Card(
+                            shape: new RoundedRectangleBorder(
+                                side: new BorderSide(
+
+                                    /// The colour of the border will depend on if the solar charger is the
+                                    /// currently selected solar charger
+                                    color: solarChargerList[index] ==
+                                            currentSelectedSolarCharger
+                                        ? Colors.blue
+                                        : Colors.white,
+                                    width: 2.0),
+                                borderRadius: BorderRadius.circular(4.0)),
+                            child: ListTile(
+                              title: new Text(
+                                '${solarChargerList[index]}',
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                          onTap: () {
+                            print('${solarChargerList[index]} tapped');
+
+                            /// First check if there is the currently selected charger is assigned
+                            if (currentSelectedSolarCharger != null) {
+                              /// If it is assigned, then make that solar charger false in solarChargerMap
+                              solarChargerMap[currentSelectedSolarCharger] =
+                                  false;
+                            }
+
+                            /// Update our currently selected charger
+                            currentSelectedSolarCharger =
+                                solarChargerList[index];
+
+                            /// Then update our solarChargerMap to be true
+                            solarChargerMap[currentSelectedSolarCharger] = true;
+
+                            /// Set the state so that the selected solar charger will have a blue border
+                            setState(() {});
+                          },
+                        );
+                      }),
+                  new Expanded(
+                      child: new Padding(
+                    padding: const EdgeInsets.only(top: 15, bottom: 15),
+                    child: new Align(
+                      child: new RaisedButton(
+                        onPressed: () {
+                          disposed = true;
+
+                          Platform.isAndroid
+                              ? Navigator.of(context)
+                                  .push(new MaterialPageRoute(
+                                  builder: (BuildContext context) =>
+                                      new SendWiFiPayloadAndroid(
+                                        connectionMethod: '3G',
+                                        connectionPayload: {},
+                                        solarChargerSSID:
+                                            currentSelectedSolarCharger,
+                                        firebaseEmail: widget.firebaseEmail,
+                                        firebasePassword:
+                                            widget.firebasePassword,
+                                      ),
+                                ))
+                              : Navigator.of(context)
+                                  .push(new MaterialPageRoute(
+                                  builder: (BuildContext context) =>
+                                      new SendWiFiPayloadiOS(
+                                        connectionMethod: '3G',
+                                        connectionPayload: {},
+                                        solarChargerSSID:
+                                            currentSelectedSolarCharger,
+                                        firebaseEmail: widget.firebaseEmail,
+                                        firebasePassword:
+                                            widget.firebasePassword,
+                                      ),
+                                ));
+                        },
+                        child: const Text('Select Solar Charger'),
+                      ),
+                      alignment: Alignment.bottomCenter,
+                    ),
+                  ))
+                ],
+              )
+            : new Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  new Icon(
+                    progressIcon,
+                    size: MediaQuery.of(context).size.width / 1.5,
+                  ),
+                  new Text(
+                    progressString,
+                    style: TextStyle(fontSize: 20.0),
+                    textAlign: TextAlign.center,
+                  ),
+                  new Padding(padding: const EdgeInsets.all(25)),
+                  const Center(child: const CircularProgressIndicator()),
+                  new Padding(
+                      padding: new EdgeInsets.only(
+                          top: MediaQuery.of(context).size.height / 3.2))
+                ],
+              ));
+  }
+
+  startWifiScan() async {
+    print('hello');
+    setState(() {
+      progressIcon = Icons.signal_wifi_off;
+      progressString = 'Finding a Delta Solar Charger...';
+    });
+
+    bool wifiNetworkFound = false;
+    String ssid;
+
+    /// Try three times to find the Solar Charger Wi-Fi network
+    for (int i = 0; i < 2000; i++) {
+      if (!disposed) {
+        print('Attempt $i at finding a Solar Charger');
+
+        List<WifiNetwork> htResultNetwork;
+        try {
+          htResultNetwork = await WiFiForIoTPlugin.loadWifiList();
+        } on PlatformException {
+          htResultNetwork = new List<WifiNetwork>();
+        }
+
+        /// Loop through Wi-Fi networks to see if we can find a Delta Solar Charger
+        for (WifiNetwork network in htResultNetwork) {
+          /// If we have found a solar charger and this solar charger isn't already in the list
+          if (network.ssid.contains('Delta_Solar_Charger') &
+              !solarChargerMap.containsKey(network.ssid)) {
+            wifiNetworkFound = true;
+            ssid = network.ssid;
+            selectedSSID = ssid;
+
+            /// Then we add it to the list and update our state
+            solarChargerMap[ssid] = false;
+            displayScanResults = true;
+            setState(() {
+              print(solarChargerMap);
+            });
+          }
+        }
+      }
+    }
+
+    if (!wifiNetworkFound) {
+      setState(() {
+        progressIcon = Icons.signal_wifi_off;
+        progressString =
+            'Solar Charger not found. Please press back and try again.';
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => startWifiScan());
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    disposed = true;
   }
 }
 
 class SendWiFiPayloadAndroid extends StatefulWidget {
   final String connectionMethod;
   final Map connectionPayload;
+  final String solarChargerSSID;
+  final String firebaseEmail;
+  final String firebasePassword;
 
   SendWiFiPayloadAndroid({
     Key key,
-    this.connectionMethod,
-    this.connectionPayload,
+    @required this.connectionMethod,
+    @required this.connectionPayload,
+    @required this.solarChargerSSID,
+    @required this.firebaseEmail,
+    @required this.firebasePassword,
   }) : super(key: key);
 
   @override
@@ -312,7 +544,7 @@ class _SendWiFiPayloadAndroidState extends State<SendWiFiPayloadAndroid> {
       print('Transmission failed 10 times...');
       progressIcon = Icons.sync_problem;
       progressString =
-      'Transmission unsuccessful. Please go back and try again';
+          'Transmission unsuccessful. Please go back and try again';
     }
   }
 
@@ -323,7 +555,7 @@ class _SendWiFiPayloadAndroidState extends State<SendWiFiPayloadAndroid> {
 
     setState(() {
       progressIcon = Icons.signal_wifi_4_bar;
-      progressString = 'Solar Charger found. Attemping to connect...';
+      progressString = 'Attemping to connect to selected Solar Charger...';
     });
     bool wifiConnectionResult = false;
 
@@ -359,80 +591,35 @@ class _SendWiFiPayloadAndroidState extends State<SendWiFiPayloadAndroid> {
     }
   }
 
-  handleInitialSetup() async {
-    setState(() {
-      progressIcon = Icons.signal_wifi_off;
-      progressString = 'Finding a Delta Solar Charger...';
-    });
-
-    bool wifiNetworkFound = false;
-    String ssid;
-
-    /// Try three times to find the Solar Charger Wi-Fi network
-    for (int i = 0; i < 3; i++) {
-      print('Attempt $i at finding a Solar Charger');
-
-      List<WifiNetwork> htResultNetwork;
-      try {
-        htResultNetwork = await WiFiForIoTPlugin.loadWifiList();
-      } on PlatformException {
-        htResultNetwork = new List<WifiNetwork>();
-      }
-
-      /// Loop through Wi-Fi networks to see if we can find a Delta Solar Charger
-      for (WifiNetwork network in htResultNetwork) {
-        print(network.ssid);
-
-        // Todo: change the SSID to Delta_Solar_Charger_xx
-        if (network.ssid.contains('Delta_Solar_Charger')) {
-          wifiNetworkFound = true;
-          ssid = network.ssid;
-
-          /// Break out of the SSID search process
-          break;
-        }
-      }
-
-      /// If we have found a network then we can break out of our loop
-      if (wifiNetworkFound) {
-        break;
-      }
-    }
-
-    if (wifiNetworkFound) {
-      connectToWifi(ssid);
-    } else {
-      setState(() {
-        progressIcon = Icons.signal_wifi_off;
-        progressString =
-            'Solar Charger not found. Please press back and try again.';
-      });
-    }
-  }
-
   @override
   void initState() {
     super.initState();
-
-    handleInitialSetup();
+    print(widget.firebaseEmail);
+//    connectToWifi(widget.solarChargerSSID);
   }
 }
 
-class SendWifiPayloadiOS extends StatefulWidget {
+class SendWiFiPayloadiOS extends StatefulWidget {
   final String connectionMethod;
   final Map connectionPayload;
+  final String solarChargerSSID;
+  final String firebaseEmail;
+  final String firebasePassword;
 
-  SendWifiPayloadiOS({
+  SendWiFiPayloadiOS({
     Key key,
     this.connectionMethod,
     this.connectionPayload,
+    @required this.solarChargerSSID,
+    @required this.firebaseEmail,
+    @required this.firebasePassword,
   }) : super(key: key);
 
   @override
-  _SendWifiPayloadiOSState createState() => _SendWifiPayloadiOSState();
+  _SendWiFiPayloadiOSState createState() => _SendWiFiPayloadiOSState();
 }
 
-class _SendWifiPayloadiOSState extends State<SendWifiPayloadiOS> {
+class _SendWiFiPayloadiOSState extends State<SendWiFiPayloadiOS> {
   @override
   Widget build(BuildContext context) {
     return Container();
@@ -440,6 +627,7 @@ class _SendWifiPayloadiOSState extends State<SendWifiPayloadiOS> {
 }
 
 Future<bool> sendInitialSetupPostRequest() async {
+  // Todo: this needs to be custom
   Map requestPayload = {
     "firebase_email": "jgv115@gmail.com",
     'firebase_password': 'test123',

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
+import 'dart:io';
 import 'dart:async';
+
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:smart_charging_app/main.dart';
+
 import 'package:smart_charging_app/firebase_transfer.dart';
 import 'package:smart_charging_app/change_settings.dart';
 import 'package:smart_charging_app/liveDataStream.dart';
@@ -12,10 +14,12 @@ import 'package:smart_charging_app/solarChargerSettings.dart';
 import 'package:smart_charging_app/chargeSession.dart';
 import 'package:smart_charging_app/charging_archive.dart';
 import 'package:smart_charging_app/inverter_archive.dart';
+
 import 'package:charts_flutter/flutter.dart' as charts;
 import 'package:intl/intl.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 Future<FirebaseApp> main() async {
   final FirebaseApp app = await FirebaseApp.configure(
@@ -57,18 +61,24 @@ class _DashboardState extends State<Dashboard> {
 
   var listOfChargingSessionSubscriptions = <StreamSubscription>[];
 
+  /// Initialize the strings that will define our display name and email
   String _displayName = "";
   String _displayEmail = "";
 
-  var numChargingSessionsActive = new Text('No Charging Sessions Active');
-  var listOfChargingChargers = <Widget>[
+  /// Initialize a Text that will be displayed to show the number of active chargers
+  Text numChargingSessionsActive = new Text('No Charging Sessions Active');
+
+  /// Initialize a List containing the list of active chargers
+  List<Widget> listOfChargingChargers = [
     new ListTile(
       title: Text('MEL-ACMP'),
     ),
   ];
-  var chargingSessionIcon = new Icon(Icons.battery_std);
 
-  var liveAnalytics = {
+  /// Initialize our charging session icon
+  Icon chargingSessionIcon = new Icon(Icons.battery_std);
+
+  Map liveAnalytics = {
     'btp_charged_t': '0.0',
     'btp_consumed_t': '0.0',
     'dcp_t': '0.0',
@@ -76,229 +86,262 @@ class _DashboardState extends State<Dashboard> {
     'utility_p_import_t': '0.0'
   };
 
-  var chargingEnergyUsedMap = <String, String>{};
+  Map<String, String> chargingEnergyUsedMap = {};
 
+  /// Initialize our map that will store our inverter history analytics
   Map inverterHistoryAnalytics;
 
+  /// Initialize our list of series for the daily charger breakdown chart
   List<charts.Series<AnalyticsData, DateTime>> dailyChargerBreakdownSeriesList;
 
   List listOfTrailingEnergy = [];
 
+  /// Initialize the last updated time for dashboard
   String lastUpdatedDatetime;
+
+  /// Initialize the current back press time
+  DateTime currentBackPressTime = DateTime.now().subtract(Duration(seconds: 3));
 
   @override
   Widget build(BuildContext context) {
-    return new Scaffold(
-        appBar: new AppBar(
-          title: const Text("Delta Solar Charger Dashboard"),
-        ),
-        drawer: new Drawer(
-            child: ListView(children: <Widget>[
-          UserAccountsDrawerHeader(
-            accountName: Text(_displayName),
-            accountEmail: Text(_displayEmail),
-            currentAccountPicture: const CircleAvatar(),
-            decoration: new BoxDecoration(color: Colors.blue),
-          ),
-          ListTile(
-            title: const Text('Dashboard'),
-            onTap: () {
-              Navigator.of(context).pop();
-            },
-          ),
-          ListTile(
-            title: const Text('Live System Data'),
-            onTap: () {
-              var route = new MaterialPageRoute(
-                  builder: (BuildContext context) => new DataStreamPage1());
-              Navigator.of(context).pop();
-              Navigator.of(context).push(route);
-            },
-          ),
-          ListTile(
-            title: const Text('System Archive'),
-            onTap: () {
-              var route = new MaterialPageRoute(
-                  builder: (BuildContext context) => new InverterArchive());
-              Navigator.of(context).pop();
-              Navigator.of(context).push(route);
-            },
-          ),
-          ListTile(
-            title: const Text('Charging Session Archive'),
-            onTap: () {
-              var route = new MaterialPageRoute(
-                  builder: (BuildContext context) => new ChargingArchive());
-              Navigator.of(context).pop();
-              Navigator.of(context).push(route);
-            },
-          ),
-          ListTile(
-            title: Text('Live Data Stream2'),
-            onTap: () {
-              var route = new MaterialPageRoute(
-                  builder: (BuildContext context) => new DataStreamPage());
-              Navigator.of(context).pop();
-              Navigator.of(context).push(route);
-            },
-          ),
-          ListTile(
-            title: Text('Change Solar Charging Settings'),
-            onTap: () {
-              print('moving to setings');
-              var route = new MaterialPageRoute(
-                  builder: (BuildContext context) =>
-                      new SolarChargerSettings());
-              Navigator.of(context).pop();
-              Navigator.of(context).push(route);
-            },
-          ),
-          ListTile(
-            title: Text('Change Delta Smart Box Settings'),
-            onTap: () {
-              print('moving to setings');
-              var route = new MaterialPageRoute(
-                  builder: (BuildContext context) => new ChangeSettings());
-              Navigator.of(context).pop();
-              Navigator.of(context).push(route);
-            },
-          ),
-          Divider(),
-          ListTile(
-            title: Text('Sign Out'),
-            onTap: _signOut,
-          ),
-        ])),
-        body: loadingData
-            ? new Center(
-                child: const Center(child: const CircularProgressIndicator()))
-            : new Center(
-                child: new ListView(
-                children: <Widget>[
-                  new Card(
-                    child: new Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        new ListTile(
-                            title: new Center(
-                                child: new Text(
-                          "Solar Generated Today",
-                          style: _headingFont,
-                        ))),
-                        new ListTile(
-                            title: new Center(
-                                child: new Text(
-                          "${liveAnalytics['dcp_t']}",
-                          style: _valueFont,
-                        ))),
-                      ],
-                    ),
-                  ),
-                  new Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+    return new WillPopScope(
+        child: new Scaffold(
+            appBar: new AppBar(
+              title: const Text("Delta Solar Charger Dashboard"),
+            ),
+            drawer: new Drawer(
+                child: ListView(children: <Widget>[
+              UserAccountsDrawerHeader(
+                accountName: Text(_displayName),
+                accountEmail: Text(_displayEmail),
+                currentAccountPicture: const CircleAvatar(),
+                decoration: new BoxDecoration(color: Colors.blue),
+              ),
+              ListTile(
+                title: const Text('Dashboard'),
+                onTap: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+              ListTile(
+                title: const Text('Live System Data'),
+                onTap: () {
+                  var route = new MaterialPageRoute(
+                      builder: (BuildContext context) => new DataStreamPage1());
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(route);
+                },
+              ),
+              ListTile(
+                title: const Text('System Archive'),
+                onTap: () {
+                  var route = new MaterialPageRoute(
+                      builder: (BuildContext context) => new InverterArchive());
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(route);
+                },
+              ),
+              ListTile(
+                title: const Text('Charging Session Archive'),
+                onTap: () {
+                  var route = new MaterialPageRoute(
+                      builder: (BuildContext context) => new ChargingArchive());
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(route);
+                },
+              ),
+              ListTile(
+                title: Text('Live Data Stream2'),
+                onTap: () {
+                  var route = new MaterialPageRoute(
+                      builder: (BuildContext context) => new DataStreamPage());
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(route);
+                },
+              ),
+              ListTile(
+                title: Text('Change Solar Charging Settings'),
+                onTap: () {
+                  print('moving to setings');
+                  var route = new MaterialPageRoute(
+                      builder: (BuildContext context) =>
+                          new SolarChargerSettings());
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(route);
+                },
+              ),
+              ListTile(
+                title: Text('Change Delta Smart Box Settings'),
+                onTap: () {
+                  print('moving to setings');
+                  var route = new MaterialPageRoute(
+                      builder: (BuildContext context) => new ChangeSettings());
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(route);
+                },
+              ),
+              Divider(),
+              ListTile(
+                title: Text('Sign Out'),
+                onTap: _signOut,
+              ),
+            ])),
+            body: loadingData
+                ? new Center(
+                    child:
+                        const Center(child: const CircularProgressIndicator()))
+                : new Center(
+                    child: new ListView(
                     children: <Widget>[
-                      new Expanded(
-                          child: new Card(
-                              child: new Column(
-                        mainAxisSize: MainAxisSize.min,
+                      new Card(
+                        child: new Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            new ListTile(
+                                title: new Center(
+                                    child: new Text(
+                              "Solar Generated Today",
+                              style: _headingFont,
+                            ))),
+                            new ListTile(
+                                title: new Center(
+                                    child: new Text(
+                              "${liveAnalytics['dcp_t']}",
+                              style: _valueFont,
+                            ))),
+                          ],
+                        ),
+                      ),
+                      new Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: <Widget>[
-                          new ListTile(
-                              title: new Center(
-                                  child: new Text(
-                            "Power Exported Today",
-                            style: _headingFont,
-                            textAlign: TextAlign.center,
+                          new Expanded(
+                              child: new Card(
+                                  child: new Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              new ListTile(
+                                  title: new Center(
+                                      child: new Text(
+                                "Power Exported Today",
+                                style: _headingFont,
+                                textAlign: TextAlign.center,
+                              ))),
+                              new ListTile(
+                                  title: new Center(
+                                      child: new Text(
+                                "${liveAnalytics['utility_p_export_t']}",
+                                style: _valueFont,
+                              ))),
+                            ],
                           ))),
-                          new ListTile(
-                              title: new Center(
-                                  child: new Text(
-                            "${liveAnalytics['utility_p_export_t']}",
-                            style: _valueFont,
+                          new Expanded(
+                              child: new Card(
+                                  child: new Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              new ListTile(
+                                  title: new Center(
+                                      child: new Text(
+                                "Power Imported Today",
+                                style: _headingFont,
+                                textAlign: TextAlign.center,
+                              ))),
+                              new ListTile(
+                                  title: new Center(
+                                      child: new Text(
+                                "${liveAnalytics['utility_p_import_t']}",
+                                style: _valueFont,
+                              ))),
+                            ],
                           ))),
                         ],
-                      ))),
-                      new Expanded(
-                          child: new Card(
-                              child: new Column(
-                        mainAxisSize: MainAxisSize.min,
+                      ),
+                      new Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: <Widget>[
-                          new ListTile(
-                              title: new Center(
-                                  child: new Text(
-                            "Power Imported Today",
-                            style: _headingFont,
-                            textAlign: TextAlign.center,
+                          new Expanded(
+                              child: new Card(
+                                  child: new Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              new ListTile(
+                                  title: new Center(
+                                      child: new Text(
+                                "Battery Consumed Today",
+                                style: _headingFont,
+                                textAlign: TextAlign.center,
+                              ))),
+                              new ListTile(
+                                  title: new Center(
+                                      child: new Text(
+                                "${liveAnalytics['btp_consumed_t']}",
+                                style: _valueFont,
+                              ))),
+                            ],
                           ))),
-                          new ListTile(
-                              title: new Center(
-                                  child: new Text(
-                            "${liveAnalytics['utility_p_import_t']}",
-                            style: _valueFont,
+                          new Expanded(
+                              child: new Card(
+                                  child: new Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: <Widget>[
+                              new ListTile(
+                                  title: new Center(
+                                      child: new Text(
+                                "Battery Charged Today",
+                                style: _headingFont,
+                                textAlign: TextAlign.center,
+                              ))),
+                              new ListTile(
+                                  title: new Center(
+                                      child: new Text(
+                                "${liveAnalytics['btp_charged_t']}",
+                                style: _valueFont,
+                              ))),
+                            ],
                           ))),
                         ],
-                      ))),
+                      ),
+                      new Card(
+                        child: new ExpansionTile(
+                            leading: chargingSessionIcon,
+                            title: numChargingSessionsActive,
+                            children: listOfChargingChargers),
+                      ),
+                      new SolarGenerationHistoryCard(),
+                      new DailyChargerBreakdownCard(),
+                      new Text(
+                        'Last updated: $lastUpdatedDatetime',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 10),
+                      )
                     ],
-                  ),
-                  new Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: <Widget>[
-                      new Expanded(
-                          child: new Card(
-                              child: new Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          new ListTile(
-                              title: new Center(
-                                  child: new Text(
-                            "Battery Consumed Today",
-                            style: _headingFont,
-                            textAlign: TextAlign.center,
-                          ))),
-                          new ListTile(
-                              title: new Center(
-                                  child: new Text(
-                            "${liveAnalytics['btp_consumed_t']}",
-                            style: _valueFont,
-                          ))),
-                        ],
-                      ))),
-                      new Expanded(
-                          child: new Card(
-                              child: new Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          new ListTile(
-                              title: new Center(
-                                  child: new Text(
-                            "Battery Charged Today",
-                            style: _headingFont,
-                            textAlign: TextAlign.center,
-                          ))),
-                          new ListTile(
-                              title: new Center(
-                                  child: new Text(
-                            "${liveAnalytics['btp_charged_t']}",
-                            style: _valueFont,
-                          ))),
-                        ],
-                      ))),
-                    ],
-                  ),
-                  new Card(
-                    child: new ExpansionTile(
-                        leading: chargingSessionIcon,
-                        title: numChargingSessionsActive,
-                        children: listOfChargingChargers),
-                  ),
-                  new SolarGenerationHistoryCard(),
-                  new DailyChargerBreakdownCard(),
-                  new Text(
-                    'Last updated: $lastUpdatedDatetime',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 10),
-                  )
-                ],
-              )));
+                  ))),
+        onWillPop: () {
+          return onWillPop();
+        });
+  }
+
+  Future<bool> onWillPop() {
+    /// This function will run when the back button is pressed
+
+    /// Get the time that the button was pressed
+    DateTime now = DateTime.now();
+
+    /// If the different in time between when the last back button was pressed and when
+    /// the current button is pressed...
+    if (now.difference(currentBackPressTime) > Duration(seconds: 3)) {
+      /// Then we show a toast for the user to confirm that they want to exit the app
+      currentBackPressTime = now;
+      Fluttertoast.showToast(msg: 'Press back again to exit app');
+
+      /// Prevent the back button from working
+      return new Future(() => false);
+    }
+
+    /// If back button is pressed twice within 3 seconds then we exit the app
+    exit(0);
+    return new Future(() => true);
   }
 
   getUserDetails() {
@@ -475,10 +518,6 @@ class _DashboardState extends State<Dashboard> {
     print('Signed out');
     Navigator.of(context)
         .pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
-//        Navigator.popUntil(context, ModalRoute.withName('/'));
-//    var route = new MaterialPageRoute(
-//        builder: (BuildContext context) => new LandingPage());
-//    Navigator.of(context).pushReplacement(route);
   }
 
   @override
@@ -1326,7 +1365,6 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
     if (this.mounted) {
       setState(() {
         dailyChargerBreakdownSeriesList = seriesArray;
-        print('sup mates');
         print(dailyChargerBreakdownSeriesList);
       });
     }
