@@ -128,8 +128,8 @@ class _LandingPageState extends State<LandingPage> {
                     /// If the currentUser() returns and there is no user data
                     if (snapshot.data == null) {
                       /// Then we know that there is no existing user
-                      print('User doesnt exist');
-                      print(snapshot.data);
+//                      print('User doesnt exist');
+//                      print(snapshot.data);
                       return new Center(
                           child: loggingIn
                               ? const Center(
@@ -185,17 +185,18 @@ class _LandingPageState extends State<LandingPage> {
                                       ),
                                     ]));
                     } else {
-                      print('User exists!');
-                      print(snapshot.data);
+//                      print('User exists!');
+//                      print(snapshot.data);
                       return new Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: <Widget>[
                           new RaisedButton(
                             onPressed: () {
-                              var route = new MaterialPageRoute(
-                                  builder: (BuildContext context) =>
-                                      new Dashboard());
-                              Navigator.of(context).push(route);
+                              Navigator.pushNamed(context, "/Dashboard");
+//                              var route = new MaterialPageRoute(
+//                                  builder: (BuildContext context) =>
+//                                      new Dashboard());
+//                              Navigator.of(context).push(route);
                             },
                             child: new Text(
                                 'Login as ${snapshot.data.displayName}'),

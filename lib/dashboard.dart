@@ -49,15 +49,26 @@ class _DashboardState extends State<Dashboard> {
   var _headingFont = new TextStyle(fontSize: 20.0);
   var _valueFont = new TextStyle(fontSize: 30.0);
 
+  FirebaseApp app;
+
+  final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
+      new GlobalKey<RefreshIndicatorState>();
+
+  /// Analytics ref is a reference to our system live analytics
   DatabaseReference _analyticsRef;
   StreamSubscription _analyticsSubscription;
 
+  /// evCharger reference is a reference to a node with all our EV Chargers
   DatabaseReference _evChargerRef;
 
+  /// chargingRef is a reference to a node with all of our EV chargers and their
+  /// charging status
   DatabaseReference _chargingRef;
   StreamSubscription _chargingSubscription;
 
-  DatabaseReference _inverterHistoryAnalyticsRef;
+  /// btSOCRef is a reference to the node with our battery SOC
+  DatabaseReference _historyRef;
+  Timer _historySubscription;
 
   var listOfChargingSessionSubscriptions = <StreamSubscription>[];
 
@@ -83,8 +94,11 @@ class _DashboardState extends State<Dashboard> {
     'btp_consumed_t': '0.0',
     'dcp_t': '0.0',
     'utility_p_export_t': '0.0',
-    'utility_p_import_t': '0.0'
+    'utility_p_import_t': '0.0',
+    'bt_soc': '0.0'
   };
+
+  Map inverterHistoryData = {'btsoc': '0.0'};
 
   Map<String, String> chargingEnergyUsedMap = {};
 
@@ -191,135 +205,201 @@ class _DashboardState extends State<Dashboard> {
                     child:
                         const Center(child: const CircularProgressIndicator()))
                 : new Center(
-                    child: new ListView(
-                    children: <Widget>[
-                      new Card(
-                        child: new Column(
-                          mainAxisSize: MainAxisSize.min,
+                    child: RefreshIndicator(
+                        key: _refreshIndicatorKey,
+                        child: new ListView(
                           children: <Widget>[
-                            new ListTile(
-                                title: new Center(
-                                    child: new Text(
-                              "Solar Generated Today",
-                              style: _headingFont,
-                            ))),
-                            new ListTile(
-                                title: new Center(
-                                    child: new Text(
-                              "${liveAnalytics['dcp_t']}",
-                              style: _valueFont,
-                            ))),
+                            new Card(
+                              child: new Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: <Widget>[
+                                  new ListTile(
+                                      title: new Center(
+                                          child: new Text(
+                                    "Solar Generated Today",
+                                    style: _headingFont,
+                                  ))),
+                                  new ListTile(
+                                      title: new Center(
+                                          child: new Text(
+                                    "${liveAnalytics['dcp_t']}",
+                                    style: _valueFont,
+                                  ))),
+                                ],
+                              ),
+                            ),
+                            new Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: <Widget>[
+                                new Expanded(
+                                    child: new Card(
+                                        child: new Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    new ListTile(
+                                        title: new Center(
+                                            child: new Text(
+                                      "Power Exported Today",
+                                      style: _headingFont,
+                                      textAlign: TextAlign.center,
+                                    ))),
+                                    new ListTile(
+                                        title: new Center(
+                                            child: new Text(
+                                      "${liveAnalytics['utility_p_export_t']}",
+                                      style: _valueFont,
+                                    ))),
+                                  ],
+                                ))),
+                                new Expanded(
+                                    child: new Card(
+                                        child: new Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    new ListTile(
+                                        title: new Center(
+                                            child: new Text(
+                                      "Power Imported Today",
+                                      style: _headingFont,
+                                      textAlign: TextAlign.center,
+                                    ))),
+                                    new ListTile(
+                                        title: new Center(
+                                            child: new Text(
+                                      "${liveAnalytics['utility_p_import_t']}",
+                                      style: _valueFont,
+                                    ))),
+                                  ],
+                                ))),
+                              ],
+                            ),
+                            new Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: <Widget>[
+                                new Expanded(
+                                    child: new Card(
+                                        child: new Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    new ListTile(
+                                        title: new Center(
+                                            child: new Text(
+                                      "Battery Consumed Today",
+                                      style: _headingFont,
+                                      textAlign: TextAlign.center,
+                                    ))),
+                                    new ListTile(
+                                        title: new Center(
+                                            child: new Text(
+                                      "${liveAnalytics['btp_consumed_t']}",
+                                      style: _valueFont,
+                                    ))),
+                                  ],
+                                ))),
+                                new Expanded(
+                                    child: new Card(
+                                        child: new Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    new ListTile(
+                                        title: new Center(
+                                            child: new Text(
+                                      "Battery Charged Today",
+                                      style: _headingFont,
+                                      textAlign: TextAlign.center,
+                                    ))),
+                                    new ListTile(
+                                        title: new Center(
+                                            child: new Text(
+                                      "${liveAnalytics['btp_charged_t']}",
+                                      style: _valueFont,
+                                    ))),
+                                  ],
+                                ))),
+                              ],
+                            ),
+                            new Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: <Widget>[
+                                new Expanded(
+                                    child: new Card(
+                                        child: new Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    new ListTile(
+                                        title: new Center(
+                                            child: new Text(
+                                      "Battery SOC",
+                                      style: _headingFont,
+                                      textAlign: TextAlign.center,
+                                    ))),
+                                    new ListTile(
+                                        title: new Center(
+                                            child: new Text(
+                                      "${inverterHistoryData['btsoc']}",
+//                                "hello",
+                                      style: _valueFont,
+                                    ))),
+                                  ],
+                                ))),
+                                new Expanded(
+                                    child: new Card(
+                                        child: new Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: <Widget>[
+                                    new ListTile(
+                                        title: new Center(
+                                            child: new Text(
+                                      "Energy Consumed Today",
+                                      style: _headingFont,
+                                      textAlign: TextAlign.center,
+                                    ))),
+                                    new ListTile(
+                                        title: new Center(
+                                            child: new Text(
+                                      "${liveAnalytics['ac2p_t']}",
+                                      style: _valueFont,
+                                    ))),
+                                  ],
+                                ))),
+                              ],
+                            ),
+                            new Card(
+                              child: new ExpansionTile(
+                                  leading: chargingSessionIcon,
+                                  title: numChargingSessionsActive,
+                                  children: listOfChargingChargers),
+                            ),
+                            new SolarGenerationHistoryCard(),
+                            new DailyChargerBreakdownCard(),
+                            new Text(
+                              'Last updated: $lastUpdatedDatetime',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 10),
+                            )
                           ],
                         ),
-                      ),
-                      new Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: <Widget>[
-                          new Expanded(
-                              child: new Card(
-                                  child: new Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              new ListTile(
-                                  title: new Center(
-                                      child: new Text(
-                                "Power Exported Today",
-                                style: _headingFont,
-                                textAlign: TextAlign.center,
-                              ))),
-                              new ListTile(
-                                  title: new Center(
-                                      child: new Text(
-                                "${liveAnalytics['utility_p_export_t']}",
-                                style: _valueFont,
-                              ))),
-                            ],
-                          ))),
-                          new Expanded(
-                              child: new Card(
-                                  child: new Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              new ListTile(
-                                  title: new Center(
-                                      child: new Text(
-                                "Power Imported Today",
-                                style: _headingFont,
-                                textAlign: TextAlign.center,
-                              ))),
-                              new ListTile(
-                                  title: new Center(
-                                      child: new Text(
-                                "${liveAnalytics['utility_p_import_t']}",
-                                style: _valueFont,
-                              ))),
-                            ],
-                          ))),
-                        ],
-                      ),
-                      new Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: <Widget>[
-                          new Expanded(
-                              child: new Card(
-                                  child: new Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              new ListTile(
-                                  title: new Center(
-                                      child: new Text(
-                                "Battery Consumed Today",
-                                style: _headingFont,
-                                textAlign: TextAlign.center,
-                              ))),
-                              new ListTile(
-                                  title: new Center(
-                                      child: new Text(
-                                "${liveAnalytics['btp_consumed_t']}",
-                                style: _valueFont,
-                              ))),
-                            ],
-                          ))),
-                          new Expanded(
-                              child: new Card(
-                                  child: new Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              new ListTile(
-                                  title: new Center(
-                                      child: new Text(
-                                "Battery Charged Today",
-                                style: _headingFont,
-                                textAlign: TextAlign.center,
-                              ))),
-                              new ListTile(
-                                  title: new Center(
-                                      child: new Text(
-                                "${liveAnalytics['btp_charged_t']}",
-                                style: _valueFont,
-                              ))),
-                            ],
-                          ))),
-                        ],
-                      ),
-                      new Card(
-                        child: new ExpansionTile(
-                            leading: chargingSessionIcon,
-                            title: numChargingSessionsActive,
-                            children: listOfChargingChargers),
-                      ),
-                      new SolarGenerationHistoryCard(),
-                      new DailyChargerBreakdownCard(),
-                      new Text(
-                        'Last updated: $lastUpdatedDatetime',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 10),
-                      )
-                    ],
-                  ))),
+                        onRefresh: _refresh))),
         onWillPop: () {
           return onWillPop();
         });
+  }
+
+  Future<Null> _refresh() async {
+    /// This function will refresh the page when the user swipes down
+    _analyticsSubscription.cancel();
+    _chargingSubscription.cancel();
+    _historySubscription.cancel();
+    listOfTrailingEnergy.clear();
+
+    /// Grab our info for solar generation
+    await grabSolarGenerationHistory();
+
+    /// Grab our info for chargers that are currently charging
+    /// Then grab our daily charger breakdown
+    await grabChargingChargers();
+
+    return null;
   }
 
   Future<bool> onWillPop() {
@@ -353,7 +433,7 @@ class _DashboardState extends State<Dashboard> {
     });
   }
 
-  Future<Null> grabSolarGenerationHistory(app) async {
+  Future<Null> grabSolarGenerationHistory() async {
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
     final FirebaseDatabase database = new FirebaseDatabase(app: app);
     String uid = user.uid;
@@ -372,11 +452,40 @@ class _DashboardState extends State<Dashboard> {
           snapshot['utility_p_export_t'].toStringAsFixed(2) + 'kWh';
       liveAnalytics['utility_p_import_t'] =
           (snapshot['utility_p_import_t'] * -1).toStringAsFixed(2) + 'kWh';
+      liveAnalytics['ac2p_t'] = (snapshot['ac2p_t']).toStringAsFixed(2) + 'kWh';
 
       lastUpdatedDatetime = snapshot['time'];
       setState(() {
         loadingData = false;
       });
+    });
+
+    DateFormat todayDateFormat = new DateFormat('yyyy-MM-dd');
+
+    /// First define our history reference node
+    _historyRef = database
+        .reference()
+        .child('users/$uid/history/${todayDateFormat.format(DateTime.now())}');
+
+    /// Then get the battery SOC straight away
+    _historyRef.limitToLast(1).once().then((DataSnapshot snapshot) {
+      String key = snapshot.value.entries.elementAt(0).key;
+
+      inverterHistoryData['btsoc'] =
+          (snapshot.value[key]['btsoc']).toStringAsFixed(1) + "%";
+      setState(() {});
+    });
+
+    /// Now make a Timer that runs every 10 seconds and grabs the BT SOC
+    _historySubscription =
+        new Timer.periodic(const Duration(seconds: 10), (Timer t) {
+      _historyRef.limitToLast(1).once().then((DataSnapshot snapshot) {
+        String key = snapshot.value.entries.elementAt(0).key;
+
+        inverterHistoryData['btsoc'] =
+            (snapshot.value[key]['btsoc']).toStringAsFixed(1) + "%";
+      });
+      setState(() {});
     });
   }
 
@@ -400,7 +509,7 @@ class _DashboardState extends State<Dashboard> {
     }
   }
 
-  grabChargingChargers(app) async {
+  grabChargingChargers() async {
     /// This function will grab information about the chargers that are
     /// currently charging
 
@@ -523,16 +632,18 @@ class _DashboardState extends State<Dashboard> {
   @override
   void initState() {
     super.initState();
-    main().then((FirebaseApp app) {
+    main().then((FirebaseApp firebaseapp) {
+      app = firebaseapp;
+
       /// This gets values for our Nav email/name
       getUserDetails();
 
       /// Grab our info for solar generation
-      grabSolarGenerationHistory(app);
+      grabSolarGenerationHistory();
 
       /// Grab our info for chargers that are currently charging
       /// Then grab our daily charger breakdown
-      grabChargingChargers(app);
+      grabChargingChargers();
     });
   }
 
@@ -544,7 +655,7 @@ class _DashboardState extends State<Dashboard> {
     _chargingRef = null;
     _analyticsSubscription.cancel();
     _chargingSubscription.cancel();
-
+    _historySubscription.cancel();
     listOfTrailingEnergy.clear();
 
     print('Disposed');
@@ -1344,6 +1455,8 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
   Future<Null> grabDailyChargerBreakdown(app) async {
     /// This function grabs all of the data needed to draw the daily charger
     /// breakdown bar chart
+
+    print('grabbing daily charger breakdown');
 
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
     final FirebaseDatabase database = new FirebaseDatabase(app: app);

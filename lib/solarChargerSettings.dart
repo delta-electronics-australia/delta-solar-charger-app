@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
+import 'dart:io';
+import 'dart:convert';
 import 'dart:async';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -56,6 +58,10 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
   StreamSubscription _singleChargingModeSubscription;
   StreamSubscription _bufferAggroModeSubscription;
   StreamSubscription _authenticationRequiredSubscription;
+
+  bool checkingForUpdates = false;
+
+  Widget firmwareWidget;
 
   @override
   Widget build(BuildContext context) {
@@ -136,7 +142,7 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
                             return new DropdownMenuItem<String>(
                                 child: Text(authenticationRequirement),
                                 value: authenticationRequiredOptions[
-                                        authenticationRequirement]);
+                                    authenticationRequirement]);
                           }).toList(),
                           onChanged: authenticationRequiredChanged,
                           value: authenticationRequired,
@@ -145,13 +151,75 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
                     )
                   : new Center(
                       child: const Center(
-                          child: const CircularProgressIndicator())))
+                          child: const CircularProgressIndicator()))),
+          new Card(
+              child: new Column(
+            children: <Widget>[
+              new Text(
+                'Firmware Updates',
+                style: _headingFont,
+              ),
+              new Padding(
+                  padding: const EdgeInsets.all(15),
+                  child: !checkingForUpdates
+                      ? firmwareWidget
+                      : new Center(
+                          child: const Center(
+                              child: const CircularProgressIndicator())))
+            ],
+          ))
         ],
       )),
     );
   }
 
-  authenticationRequiredChanged(newAuthenticationRequirement){
+  checkForUpdates() async {
+    /// This function checks for updates
+
+    checkingForUpdates = true;
+    setState(() {});
+
+    /// Get the latest version number
+    DataSnapshot latestVersionNumber =
+        await database.reference().child('version').once();
+
+    /// Get the version number of the solar charger
+    FirebaseUser user = await FirebaseAuth.instance.currentUser();
+    DataSnapshot versionNumber =
+        await database.reference().child('users/${user.uid}/version').once();
+
+    if (latestVersionNumber.value > versionNumber.value) {
+      print('Update is available!');
+
+      firmwareWidget = new Column(
+        children: <Widget>[
+          new Text('Current version: v${versionNumber.value}'),
+          new FlatButton(
+              onPressed: () {
+                var route = new MaterialPageRoute(
+                    builder: (BuildContext context) => new UpdateFirmware());
+                Navigator.of(context).push(route);
+              },
+              child: new Text(
+                  'Update to v${latestVersionNumber.value} available. Click to continue'))
+        ],
+      );
+    } else {
+      firmwareWidget = new Column(
+        children: <Widget>[
+          new Text('Current version: v${versionNumber.value}'),
+          new Padding(padding: const EdgeInsets.only(top: 10)),
+          const Text('No update available')
+        ],
+      );
+      print('No updates available');
+    }
+
+    checkingForUpdates = false;
+    setState(() {});
+  }
+
+  authenticationRequiredChanged(newAuthenticationRequirement) {
     FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
       database
           .reference()
@@ -226,6 +294,14 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
         print(authenticationRequired);
       });
     });
+
+    firmwareWidget = new RaisedButton(
+      onPressed: () {
+        checkForUpdates();
+      },
+      child: const Text("Check for Solar Charger firmware updates"),
+    );
+    setState(() {});
   }
 
   @override
@@ -244,5 +320,19 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
     _bufferAggroModeSubscription.cancel();
     _authenticationRequiredSubscription.cancel();
     print('disposed');
+  }
+}
+
+class UpdateFirmware extends StatefulWidget {
+  @override
+  _UpdateFirmwareState createState() => _UpdateFirmwareState();
+}
+
+class _UpdateFirmwareState extends State<UpdateFirmware> {
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      child: new Text('This is the update firmware page'),
+    );
   }
 }

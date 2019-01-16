@@ -88,7 +88,7 @@ class _InitialSetup extends State<InitialSetup> {
                                 var route = new MaterialPageRoute(
                                     builder: (BuildContext context) =>
                                         new SelectConnectionPage(
-                                          firebaseEmail: 'test123@gmail.com',
+                                          firebaseEmail: 'jgv115@gmail.com',
                                           firebasePassword: 'test123',
                                         ));
                                 Navigator.of(context).push(route);
@@ -108,7 +108,7 @@ class _InitialSetup extends State<InitialSetup> {
     user.password = _password.text;
     userAuth.createUser(user).then((returnValue) {
       if (returnValue == "Account Created Successfully!") {
-        // Now let's send the charger ID and the user/pass to OCPP backend
+        /// Now let's send the charger ID and the user/pass to OCPP backend
         var route = new MaterialPageRoute(
           builder: (BuildContext context) => new SelectConnectionPage(
                 firebaseEmail: user.email,
@@ -117,7 +117,7 @@ class _InitialSetup extends State<InitialSetup> {
         );
         Navigator.of(context).push(route);
       } else {
-        // If there is an error, we show a dialog with the error
+        /// If there is an error, we show a dialog with the error
         showDialog(
             context: context,
             barrierDismissible: false,
@@ -159,34 +159,85 @@ class SelectConnectionPage extends StatefulWidget {
 class _SelectConnectionPageState extends State<SelectConnectionPage> {
   final _headingFont = const TextStyle(fontSize: 20.0);
 
+  Map<String, bool> interfaceMap = {
+    'ethernet': false,
+    'wifi': false,
+    '3g': false
+  };
+
+  String selectedConnectionMethod;
+
   @override
   Widget build(BuildContext context) {
     return new Scaffold(
         appBar: new AppBar(title: const Text('Connection Selection')),
         body: new ListView(
           children: <Widget>[
-            new Text(
-                "Select how your Delta Solar Charger Controller will connect to the Internet",
-                textAlign: TextAlign.center,
-                style: _headingFont),
-            new Card(
-                child: new Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[new Text('Ethernet')],
-            )),
-            new Card(
-                child: new Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[new Text('3G')],
-            )),
+            new Padding(
+              padding: const EdgeInsets.all(15),
+              child: new Text(
+                  "Select how your Delta Solar Charger Controller will connect to the Internet",
+                  textAlign: TextAlign.center,
+                  style: _headingFont),
+            ),
             new Card(
                 shape: new RoundedRectangleBorder(
-                    side: new BorderSide(color: Colors.blue, width: 2.0),
+                    side: new BorderSide(
+                        color: selectedConnectionMethod == 'none'
+                            ? Colors.blue
+                            : Colors.white,
+                        width: 2.0),
                     borderRadius: BorderRadius.circular(4.0)),
-                child: new Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[new Text('Wi-Fi')],
+                child: new ListTile(
+                  title: new Text('None - Run in offline mode'),
+                  onTap: () {
+                    selectedConnectionMethod = 'none';
+                    setState(() {});
+                  },
                 )),
+            new Card(
+                shape: new RoundedRectangleBorder(
+                    side: new BorderSide(
+                        color: selectedConnectionMethod == 'ethernet'
+                            ? Colors.blue
+                            : Colors.white,
+                        width: 2.0),
+                    borderRadius: BorderRadius.circular(4.0)),
+                child: new ListTile(
+                  title: new Text('Ethernet'),
+                  onTap: () {
+                    selectedConnectionMethod = 'ethernet';
+                    setState(() {});
+                  },
+                )),
+            new Card(
+                shape: new RoundedRectangleBorder(
+                    side: new BorderSide(
+                        color: selectedConnectionMethod == 'wifi'
+                            ? Colors.blue
+                            : Colors.white,
+                        width: 2.0),
+                    borderRadius: BorderRadius.circular(4.0)),
+                child: new ListTile(
+                    title: new Text('Wi-Fi'),
+                    onTap: () {
+                      selectedConnectionMethod = 'wifi';
+                      setState(() {});
+                    })),
+            new Card(
+                shape: new RoundedRectangleBorder(
+                    side: new BorderSide(
+                        color: selectedConnectionMethod == '3G'
+                            ? Colors.blue
+                            : Colors.white,
+                        width: 2.0),
+                    borderRadius: BorderRadius.circular(4.0)),
+                child: new ListTile(
+                    title: new Text('3G/4G'),
+                    onTap: () {
+                      selectedConnectionMethod = '3G';
+                      setState(() {});
+                    })),
             new RaisedButton(
               onPressed: connectionSelected,
               child: const Text('Next'),
@@ -198,8 +249,7 @@ class _SelectConnectionPageState extends State<SelectConnectionPage> {
   void connectionSelected() {
     Navigator.of(context).push(new MaterialPageRoute(
       builder: (BuildContext context) => new ScanWifiNetworks(
-          connectionMethod: '3G',
-          connectionPayload: {},
+          connectionMethod: selectedConnectionMethod,
           firebaseEmail: widget.firebaseEmail,
           firebasePassword: widget.firebasePassword),
     ));
@@ -208,14 +258,12 @@ class _SelectConnectionPageState extends State<SelectConnectionPage> {
 
 class ScanWifiNetworks extends StatefulWidget {
   final String connectionMethod;
-  final Map connectionPayload;
   final String firebaseEmail;
   final String firebasePassword;
 
   ScanWifiNetworks({
     Key key,
     this.connectionMethod,
-    this.connectionPayload,
     this.firebaseEmail,
     this.firebasePassword,
   }) : super(key: key);
@@ -227,6 +275,9 @@ class ScanWifiNetworks extends StatefulWidget {
 class _ScanWifiNetworksState extends State<ScanWifiNetworks> {
   /// Boolean value that tells us whether or not we have discovered any solar chargers
   bool displayScanResults = false;
+
+  /// Boolean value that tells us whether or not the scan has failed
+  bool wifiScanFailed = false;
 
   /// Boolean variable that tells us whether we're still on the scan page
   bool disposed = false;
@@ -323,8 +374,8 @@ class _ScanWifiNetworksState extends State<ScanWifiNetworks> {
                                   .push(new MaterialPageRoute(
                                   builder: (BuildContext context) =>
                                       new SendWiFiPayloadAndroid(
-                                        connectionMethod: '3G',
-                                        connectionPayload: {},
+                                        connectionMethod:
+                                            widget.connectionMethod,
                                         solarChargerSSID:
                                             currentSelectedSolarCharger,
                                         firebaseEmail: widget.firebaseEmail,
@@ -336,8 +387,8 @@ class _ScanWifiNetworksState extends State<ScanWifiNetworks> {
                                   .push(new MaterialPageRoute(
                                   builder: (BuildContext context) =>
                                       new SendWiFiPayloadiOS(
-                                        connectionMethod: '3G',
-                                        connectionPayload: {},
+                                        connectionMethod:
+                                            widget.connectionMethod,
                                         solarChargerSSID:
                                             currentSelectedSolarCharger,
                                         firebaseEmail: widget.firebaseEmail,
@@ -366,7 +417,19 @@ class _ScanWifiNetworksState extends State<ScanWifiNetworks> {
                     textAlign: TextAlign.center,
                   ),
                   new Padding(padding: const EdgeInsets.all(25)),
-                  const Center(child: const CircularProgressIndicator()),
+
+                  /// Depending on whether or not the scan failed we show the
+                  /// progress indicator or a back button
+                  wifiScanFailed
+                      ? new Center(
+                          child: new RaisedButton(
+                            onPressed: () {
+                              startWifiScan();
+                            },
+                            child: const Text('Scan again'),
+                          ),
+                        )
+                      : const Center(child: const CircularProgressIndicator()),
                   new Padding(
                       padding: new EdgeInsets.only(
                           top: MediaQuery.of(context).size.height / 3.2))
@@ -377,6 +440,7 @@ class _ScanWifiNetworksState extends State<ScanWifiNetworks> {
   startWifiScan() async {
     print('hello');
     setState(() {
+      wifiScanFailed = false;
       progressIcon = Icons.signal_wifi_off;
       progressString = 'Finding a Delta Solar Charger...';
     });
@@ -418,9 +482,9 @@ class _ScanWifiNetworksState extends State<ScanWifiNetworks> {
 
     if (!wifiNetworkFound) {
       setState(() {
+        wifiScanFailed = true;
         progressIcon = Icons.signal_wifi_off;
-        progressString =
-            'Solar Charger not found. Please press back and try again.';
+        progressString = 'Solar Charger not found. Please try again.';
       });
     }
   }
@@ -440,7 +504,6 @@ class _ScanWifiNetworksState extends State<ScanWifiNetworks> {
 
 class SendWiFiPayloadAndroid extends StatefulWidget {
   final String connectionMethod;
-  final Map connectionPayload;
   final String solarChargerSSID;
   final String firebaseEmail;
   final String firebasePassword;
@@ -448,7 +511,6 @@ class SendWiFiPayloadAndroid extends StatefulWidget {
   SendWiFiPayloadAndroid({
     Key key,
     @required this.connectionMethod,
-    @required this.connectionPayload,
     @required this.solarChargerSSID,
     @required this.firebaseEmail,
     @required this.firebasePassword,
@@ -523,21 +585,24 @@ class _SendWiFiPayloadAndroidState extends State<SendWiFiPayloadAndroid> {
     print('Connected to the Solar Charger. Transmitting data now...');
     bool transmissionSuccess = false;
 
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 100; i++) {
       print('Attempt $i in transmitting payload to Solar Charger');
 
-      transmissionSuccess = await sendInitialSetupPostRequest();
+      transmissionSuccess = await sendInitialSetupPostRequest(
+          widget.connectionMethod,
+          widget.firebaseEmail,
+          widget.firebasePassword);
 
       if (transmissionSuccess == true) {
         print('Initialization complete!');
+
+//        WiFiForIoTPlugin.disconnect();
+
         setState(() {
           processCompleted = true;
         });
         break;
       }
-
-      /// Sleep for one second before trying to transmit again
-      sleep(Duration(seconds: 1));
     }
 
     if (!transmissionSuccess) {
@@ -559,12 +624,19 @@ class _SendWiFiPayloadAndroidState extends State<SendWiFiPayloadAndroid> {
     });
     bool wifiConnectionResult = false;
 
+    String password;
+    if (ssid == "Delta_Solar_Charger") {
+      password = '1234567890';
+    } else {
+      password = 'DELTA${ssid.split('_')[3]}';
+    }
+
     for (int i = 0; i < 10; i++) {
       print('Attempt $i at connecting to Solar Charger');
 
       /// Try to connect to the discovered Solar Charger Wi-Fi AP
       wifiConnectionResult = await WiFiForIoTPlugin.connect(ssid,
-          password: '1234567890', security: NetworkSecurity.WPA);
+          password: password, security: NetworkSecurity.WPA);
 
       if (wifiConnectionResult == true) {
         setState(() {
@@ -574,13 +646,12 @@ class _SendWiFiPayloadAndroidState extends State<SendWiFiPayloadAndroid> {
         });
         break;
       }
-
-      sleep(Duration(seconds: 1));
     }
 
     print('Wifi connection result: $wifiConnectionResult');
 
     if (wifiConnectionResult) {
+      await new Future.delayed(const Duration(seconds: 5));
       transmitWifiData();
     } else {
       setState(() {
@@ -595,13 +666,12 @@ class _SendWiFiPayloadAndroidState extends State<SendWiFiPayloadAndroid> {
   void initState() {
     super.initState();
     print(widget.firebaseEmail);
-//    connectToWifi(widget.solarChargerSSID);
+    connectToWifi(widget.solarChargerSSID);
   }
 }
 
 class SendWiFiPayloadiOS extends StatefulWidget {
   final String connectionMethod;
-  final Map connectionPayload;
   final String solarChargerSSID;
   final String firebaseEmail;
   final String firebasePassword;
@@ -609,7 +679,6 @@ class SendWiFiPayloadiOS extends StatefulWidget {
   SendWiFiPayloadiOS({
     Key key,
     this.connectionMethod,
-    this.connectionPayload,
     @required this.solarChargerSSID,
     @required this.firebaseEmail,
     @required this.firebasePassword,
@@ -626,14 +695,14 @@ class _SendWiFiPayloadiOSState extends State<SendWiFiPayloadiOS> {
   }
 }
 
-Future<bool> sendInitialSetupPostRequest() async {
-  // Todo: this needs to be custom
+Future<bool> sendInitialSetupPostRequest(
+    connectionMethod, firebaseEmail, firebasePassword) async {
   Map requestPayload = {
-    "firebase_email": "jgv115@gmail.com",
-    'firebase_password': 'test123',
+    "connectionMethod": connectionMethod,
+    "firebase_email": firebaseEmail,
+    'firebase_password': firebasePassword,
   };
 
-  // Todo: this URL needs to change: will be all the same
   String url = "http://192.168.10.1:5000/delta_solar_charger_initial_setup";
   HttpClient httpClient = new HttpClient();
 
@@ -643,7 +712,6 @@ Future<bool> sendInitialSetupPostRequest() async {
 
   try {
     HttpClientRequest request = await httpClient.postUrl(Uri.parse(url));
-
     request.headers.set('content-type', 'application/json');
     request.add(utf8.encode(json.encode(requestPayload)));
     HttpClientResponse response = await request.close();

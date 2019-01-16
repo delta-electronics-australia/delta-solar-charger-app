@@ -76,7 +76,10 @@ class _ChargingArchiveState extends State<ChargingArchive> {
           ListTile(
             title: Text('Dashboard'),
             onTap: () {
-              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
+//              Navigator.of(context).pop();
+//              Navigator.of(context).pop();
+
+              Navigator.of(context).popUntil(ModalRoute.withName('/Dashboard'));
             },
           ),
           ListTile(

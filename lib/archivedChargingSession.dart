@@ -124,54 +124,49 @@ class _ChargeSessionLineState extends State<ChargeSessionLine> {
   @override
   Widget build(BuildContext context) {
     return chartWidget != null
-        ? new Center(
-            child: new ListView(
-            children: <Widget>[
-              new Card(
-                child: new Column(
-                  children: <Widget>[
-                    new ListTile(
-                        title: new Center(
-                            child: new Text(
-                      '${widget.chargerID}: ${widget.startDate} ${widget.startTime}',
-                      style: _headingFont,
-                      textAlign: TextAlign.center,
-                    ))),
-                    chartWidget,
-                    new ListTile(
+        ? new Card(
+            child: new Column(
+              children: <Widget>[
+                new ListTile(
+                    title: new Center(
+                        child: new Text(
+                  '${widget.chargerID}: ${widget.startDate} ${widget.startTime}',
+                  style: _headingFont,
+                  textAlign: TextAlign.center,
+                ))),
+                chartWidget,
+                new ListTile(
+                    title: new Text(
+                      selectedDate != ''
+                          ? 'Time'
+                          : 'Click the chart to view the data',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    trailing: new Text(selectedDate)),
+                ListView.builder(
+                    physics: NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    itemCount:
+                        selectedPoint.keys.toList(growable: false).length,
+                    itemBuilder: (context, index) {
+                      /// First get the field name (solar power, grid power etc...)
+                      String fieldName =
+                          selectedPoint.keys.toList(growable: false)[index];
+
+                      /// Now we can return a ListTile with the field name
+                      /// and the value of that field name
+                      return ListTile(
                         title: new Text(
-                          selectedDate != ''
-                              ? 'Time'
-                              : 'Click the chart to view the data',
+                          '$fieldName',
                           style: TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        trailing: new Text(selectedDate)),
-                    ListView.builder(
-                        shrinkWrap: true,
-                        itemCount:
-                            selectedPoint.keys.toList(growable: false).length,
-                        itemBuilder: (context, index) {
-                          /// First get the field name (solar power, grid power etc...)
-                          String fieldName =
-                              selectedPoint.keys.toList(growable: false)[index];
-
-                          /// Now we can return a ListTile with the field name and the value
-                          /// of that field name
-                          return ListTile(
-                            title: new Text(
-                              '$fieldName',
-                              style: TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            trailing: new Text(
-                                '${selectedPoint[fieldName].toStringAsFixed(2)} kW'),
-                          );
-                        })
-                  ],
-                ),
-              )
-            ],
-            shrinkWrap: true,
-          ))
+                        trailing: new Text(
+                            '${selectedPoint[fieldName].toStringAsFixed(2)} kW'),
+                      );
+                    })
+              ],
+            ),
+          )
         : new SizedBox(
             child: new Center(
                 child: const Center(child: const CircularProgressIndicator())),
@@ -230,7 +225,9 @@ class _ChargeSessionLineState extends State<ChargeSessionLine> {
 
     /// Finally, add all of the widgets we want into a list
     return new SizedBox(
-      height: MediaQuery.of(context).size.height / 2.5,
+      height: MediaQuery.of(context).orientation == Orientation.portrait
+          ? MediaQuery.of(context).size.height / 2.5
+          : MediaQuery.of(context).size.height,
       child: new charts.TimeSeriesChart(
         dataSeriesList,
         animate: true,
@@ -302,6 +299,7 @@ class _ChargeSessionLineState extends State<ChargeSessionLine> {
           .map((dateString) => DateTime.parse(dateString))
           .toList();
     }
+
     /// Initialize lists
     List<HistoryData> solarGenerationData = [];
     List<HistoryData> batteryPowerData = [];

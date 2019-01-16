@@ -46,6 +46,7 @@ class _InverterArchiveState extends State<InverterArchive> {
 
   Map validDatesPayload;
 
+  DateTime oldPickedDate;
   DateTime pickedDate;
 
   FirebaseDatabase database;
@@ -99,7 +100,7 @@ class _InverterArchiveState extends State<InverterArchive> {
             onTap: () {
               var route = new MaterialPageRoute(
                   builder: (BuildContext context) => new ChargingArchive());
-              Navigator.of(context).pop();
+              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
               Navigator.of(context).push(route);
             },
           ),
@@ -119,7 +120,7 @@ class _InverterArchiveState extends State<InverterArchive> {
               var route = new MaterialPageRoute(
                   builder: (BuildContext context) =>
                       new SolarChargerSettings());
-              Navigator.of(context).pop();
+              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
               Navigator.of(context).push(route);
             },
           ),
@@ -141,7 +142,7 @@ class _InverterArchiveState extends State<InverterArchive> {
         ])),
         body: validDatesPayload != null
             ? new Center(
-                child: new Column(
+                child: new ListView(
                     children: [
                 new Padding(
                   padding: const EdgeInsets.only(top: 5),
@@ -188,12 +189,12 @@ class _InverterArchiveState extends State<InverterArchive> {
       ..sort((date1, date2) => date1.compareTo(date2));
 
     // TOdo: make this work
-//    /// If a date has already been picked - then we need to dispose of the
-//    /// previous widgets
-//    if (pickedDate != null) {
-//      pickedDate = null;
-//      setState(() {});
-//    }
+    /// If a date has already been picked - then we need to dispose of the
+    /// previous widgets
+    if (pickedDate != null) {
+      pickedDate = null;
+      setState(() {});
+    }
 
     /// If no date has currently been picked then
     pickedDate = await showDatePicker(
@@ -203,6 +204,8 @@ class _InverterArchiveState extends State<InverterArchive> {
         lastDate: sortedValidDate.last,
         selectableDayPredicate: (DateTime val) =>
             sortedValidDate.contains(val));
+
+    oldPickedDate = pickedDate;
 
     if (pickedDate != null) {
       print('We picked $pickedDate');
@@ -329,7 +332,9 @@ class _SystemArchiveInformationWidgetsState
     return new Column(
       children: <Widget>[
         new SizedBox(
-          height: MediaQuery.of(context).size.height / 2.5,
+          height: MediaQuery.of(context).orientation == Orientation.portrait
+              ? MediaQuery.of(context).size.height / 2.5
+              : MediaQuery.of(context).size.height,
           child: new charts.TimeSeriesChart(
             dataSeriesList,
             animate: true,
@@ -359,7 +364,7 @@ class _SystemArchiveInformationWidgetsState
             ),
             trailing: new Text(selectedDate)),
         new ListTile(
-          title: new Text('su2p!!'),
+          title: new Text('test!!'),
         ),
 
         /// Display all of the values from that selected date
@@ -424,6 +429,7 @@ class _SystemArchiveInformationWidgetsState
       "date": dateFormatter.format(widget.pickedDate),
       "idToken": idToken
     };
+
     var url = "http://203.32.104.46/delta_dashboard/archive_request";
     HttpClient httpClient = new HttpClient();
     HttpClientRequest request = await httpClient.postUrl(Uri.parse(url));
@@ -435,9 +441,28 @@ class _SystemArchiveInformationWidgetsState
 
     Map decodedReply = json.decode(tempReply);
 
-    List timestamps = decodedReply['data_obj']['time']
-        .map((dateString) => DateTime.parse(dateString))
-        .toList();
+    /// Initialize a list of timestamps
+    List<dynamic> timestamps;
+
+    /// reduceFactor is the factor that we reduce the data by to make the arrays smaller
+    int reduceFactor;
+
+    final now = DateTime.now();
+    final todayMidnight = new DateTime(now.year, now.month, now.day);
+
+    /// If the chosen date is today, then we need to parse the time string differently
+    if (todayMidnight == widget.pickedDate) {
+      timestamps = decodedReply['data_obj']['time']
+          .map((dateString) =>
+              DateTime.parse('${dateFormatter.format(now)} $dateString'))
+          .toList();
+      reduceFactor = 1;
+    } else {
+      timestamps = decodedReply['data_obj']['time']
+          .map((dateString) => DateTime.parse(dateString))
+          .toList();
+      reduceFactor = 70;
+    }
 
     List<HistoryData> solarGenerationData = [];
     List<HistoryData> batteryPowerData = [];
@@ -445,7 +470,7 @@ class _SystemArchiveInformationWidgetsState
     List<HistoryData> loadPowerData = [];
 
     for (int i = 0; i < timestamps.length; i++) {
-      if (i % 70 == 0) {
+      if (i % reduceFactor == 0) {
         DateTime timestamp = timestamps[i];
         solarGenerationData.add(new HistoryData(
             timestamp,
