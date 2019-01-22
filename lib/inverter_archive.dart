@@ -42,6 +42,10 @@ class _InverterArchiveState extends State<InverterArchive> {
   bool loadingData = false;
   var _headingFont = new TextStyle(fontSize: 20.0);
 
+  /// Initialize the strings that will define our display name and email
+  String _displayName = "";
+  String _displayEmail = "";
+
   DatabaseReference _inverterHistoryKeysRef;
 
   Map validDatesPayload;
@@ -70,17 +74,21 @@ class _InverterArchiveState extends State<InverterArchive> {
         ),
         drawer: new Drawer(
             child: ListView(children: <Widget>[
-          DrawerHeader(
-            child: Text('Header'),
+          UserAccountsDrawerHeader(
+            accountName: Text(_displayName),
+            accountEmail: Text(_displayEmail),
+//                currentAccountPicture: const CircleAvatar(),
             decoration: new BoxDecoration(color: Colors.blue),
           ),
           ListTile(
+            leading: const Icon(Icons.dashboard),
             title: Text('Dashboard'),
             onTap: () {
               Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
             },
           ),
           ListTile(
+            leading: const Icon(Icons.show_chart),
             title: Text('Live System Data'),
             onTap: () {
               var route = new MaterialPageRoute(
@@ -89,13 +97,17 @@ class _InverterArchiveState extends State<InverterArchive> {
               Navigator.of(context).push(route);
             },
           ),
+          Divider(),
+
           ListTile(
+            leading: const Icon(Icons.unarchive),
             title: const Text('System Archive'),
             onTap: () {
               Navigator.of(context).pop();
             },
           ),
           ListTile(
+            leading: const Icon(Icons.offline_bolt),
             title: const Text('Charging Session Archive'),
             onTap: () {
               var route = new MaterialPageRoute(
@@ -104,19 +116,21 @@ class _InverterArchiveState extends State<InverterArchive> {
               Navigator.of(context).push(route);
             },
           ),
+//          ListTile(
+//            title: Text('Live Data Stream2'),
+//            onTap: () {
+//              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
+//              var route = new MaterialPageRoute(
+//                  builder: (BuildContext context) => new DataStreamPage());
+//              Navigator.of(context).push(route);
+//            },
+//          ),
+          Divider(),
+
           ListTile(
-            title: Text('Live Data Stream2'),
-            onTap: () {
-              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
-              var route = new MaterialPageRoute(
-                  builder: (BuildContext context) => new DataStreamPage());
-              Navigator.of(context).push(route);
-            },
-          ),
-          ListTile(
+            leading: const Icon(Icons.settings),
             title: Text('Change Solar Charging Settings'),
             onTap: () {
-              print('moving to setings');
               var route = new MaterialPageRoute(
                   builder: (BuildContext context) =>
                       new SolarChargerSettings());
@@ -124,16 +138,16 @@ class _InverterArchiveState extends State<InverterArchive> {
               Navigator.of(context).push(route);
             },
           ),
-          ListTile(
-            title: Text('Change Delta Smart Box Settings'),
-            onTap: () {
-              print('moving to setings');
-              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
-              var route = new MaterialPageRoute(
-                  builder: (BuildContext context) => new ChangeSettings());
-              Navigator.of(context).push(route);
-            },
-          ),
+//          ListTile(
+//            title: Text('Change Delta Smart Box Settings'),
+//            onTap: () {
+//              print('moving to setings');
+//              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
+//              var route = new MaterialPageRoute(
+//                  builder: (BuildContext context) => new ChangeSettings());
+//              Navigator.of(context).push(route);
+//            },
+//          ),
           Divider(),
           ListTile(
             title: Text('Sign Out'),
@@ -161,16 +175,6 @@ class _InverterArchiveState extends State<InverterArchive> {
                         textAlign: TextAlign.center,
                       ))
                     : null,
-//                pickedDate != null
-//                    ? new RaisedButton(
-//                        onPressed: () {
-//                          print('beep!');
-//                        },
-//                        child: new Row(children: <Widget>[
-//                          Text("Grab historical data"),
-//                          Icon(Icons.arrow_right),
-//                        ]))
-//                    : null,
                 new Divider(),
                 pickedDate != null
                     ? new SystemArchiveInformationWidgets(
@@ -246,10 +250,20 @@ class _InverterArchiveState extends State<InverterArchive> {
         .pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
   }
 
+  getUserDetails() {
+    FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
+      setState(() {
+        _displayName = user.displayName;
+        _displayEmail = user.email;
+      });
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     main().then((FirebaseApp app) async {
+      getUserDetails();
       database = new FirebaseDatabase(app: app);
       FirebaseUser user = await FirebaseAuth.instance.currentUser();
       uid = user.uid;
@@ -299,7 +313,43 @@ class _SystemArchiveInformationWidgetsState
   @override
   Widget build(BuildContext context) {
     return chartWidget != null
-        ? chartWidget
+        ? new Column(
+            children: <Widget>[
+              chartWidget,
+
+              /// Display the selected date
+              new ListTile(
+                  title: new Text(
+                    selectedDate == ''
+                        ? 'Click the chart to view the data'
+                        : 'Time',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  trailing: new Text(selectedDate)),
+
+              /// Display all of the values from that selected date
+              ListView.builder(
+                  physics: NeverScrollableScrollPhysics(),
+                  shrinkWrap: true,
+                  itemCount: selectedPoint.keys.toList(growable: false).length,
+                  itemBuilder: (context, index) {
+                    /// First get the field name (solar power, grid power etc...)
+                    String fieldName =
+                        selectedPoint.keys.toList(growable: false)[index];
+
+                    /// Now we can return a ListTile with the field name and the value
+                    /// of that field name
+                    return ListTile(
+                      title: new Text(
+                        '$fieldName',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      trailing: new Text(
+                          '${(selectedPoint[fieldName] / 1000).toStringAsFixed(2)} kW'),
+                    );
+                  })
+            ],
+          )
         : new SizedBox(
             child: new Center(
                 child: const Center(child: const CircularProgressIndicator())),
@@ -329,67 +379,29 @@ class _SystemArchiveInformationWidgetsState
     });
 
     /// Finally, add all of the widgets we want into a list
-    return new Column(
-      children: <Widget>[
-        new SizedBox(
-          height: MediaQuery.of(context).orientation == Orientation.portrait
-              ? MediaQuery.of(context).size.height / 2.5
-              : MediaQuery.of(context).size.height,
-          child: new charts.TimeSeriesChart(
-            dataSeriesList,
-            animate: true,
-            dateTimeFactory: const charts.LocalDateTimeFactory(),
-            behaviors: [
-              new charts.SeriesLegend(
-                horizontalFirst: true,
-                desiredMaxColumns: 2,
-                position: charts.BehaviorPosition.top,
-              ),
-              new charts.PanAndZoomBehavior(),
-            ],
-            selectionModels: [
-              new charts.SelectionModelConfig(
-                type: charts.SelectionModelType.info,
-                changedListener: _onSelectionChanged,
-              )
-            ],
+    return new SizedBox(
+      height: MediaQuery.of(context).orientation == Orientation.portrait
+          ? MediaQuery.of(context).size.height / 2.5
+          : MediaQuery.of(context).size.height,
+      child: new charts.TimeSeriesChart(
+        dataSeriesList,
+        animate: true,
+        dateTimeFactory: const charts.LocalDateTimeFactory(),
+        behaviors: [
+          new charts.SeriesLegend(
+            horizontalFirst: true,
+            desiredMaxColumns: 2,
+            position: charts.BehaviorPosition.top,
           ),
-        ),
-
-        /// Display the selected date
-        new ListTile(
-            title: new Text(
-              selectedDate != '' ? 'Time' : 'Click the chart to view the data',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            trailing: new Text(selectedDate)),
-        new ListTile(
-          title: new Text('test!!'),
-        ),
-
-        /// Display all of the values from that selected date
-        ListView.builder(
-            shrinkWrap: true,
-            itemCount: selectedPoint.keys.toList(growable: false).length,
-            itemBuilder: (context, index) {
-              print(index);
-
-              /// First get the field name (solar power, grid power etc...)
-              String fieldName =
-                  selectedPoint.keys.toList(growable: false)[index];
-
-              /// Now we can return a ListTile with the field name and the value
-              /// of that field name
-              return ListTile(
-                title: new Text(
-                  '$fieldName',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                trailing: new Text(
-                    '${selectedPoint[fieldName].toStringAsFixed(2)} kW'),
-              );
-            })
-      ],
+          new charts.PanAndZoomBehavior(),
+        ],
+        selectionModels: [
+          new charts.SelectionModelConfig(
+            type: charts.SelectionModelType.info,
+            changedListener: _onSelectionChanged,
+          )
+        ],
+      ),
     );
   }
 
@@ -416,6 +428,7 @@ class _SystemArchiveInformationWidgetsState
     selectedDate = '${formatter.format(time)}';
 
     setState(() {
+      print(selectedDate);
       print(selectedPoint);
     });
   }

@@ -37,9 +37,12 @@ class DataStreamPage1 extends StatefulWidget {
 }
 
 class _DataStreamPage1State extends State<DataStreamPage1> {
-  // Todo: put this back to true
-  bool loadingData = false;
+  bool loadingData = true;
   var _headingFont = new TextStyle(fontSize: 20.0);
+
+  /// Initialize the strings that will define our display name and email
+  String _displayName = "";
+  String _displayEmail = "";
 
   DatabaseReference _historyRef;
   StreamSubscription<Event> _historyDataSubscription;
@@ -65,23 +68,30 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
         ),
         drawer: new Drawer(
             child: ListView(children: <Widget>[
-          DrawerHeader(
-            child: Text('Header'),
+          UserAccountsDrawerHeader(
+            accountName: Text(_displayName),
+            accountEmail: Text(_displayEmail),
+//                currentAccountPicture: const CircleAvatar(),
             decoration: new BoxDecoration(color: Colors.blue),
           ),
           ListTile(
+            leading: const Icon(Icons.dashboard),
             title: Text('Dashboard'),
             onTap: () {
               Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
             },
           ),
           ListTile(
+            leading: const Icon(Icons.show_chart),
             title: Text('Live System Data'),
             onTap: () {
               Navigator.of(context).pop();
             },
           ),
+          Divider(),
+
           ListTile(
+            leading: const Icon(Icons.unarchive),
             title: const Text('System Archive'),
             onTap: () {
               Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
@@ -91,6 +101,7 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
             },
           ),
           ListTile(
+            leading: const Icon(Icons.offline_bolt),
             title: const Text('Charging Session Archive'),
             onTap: () {
               var route = new MaterialPageRoute(
@@ -99,19 +110,21 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
               Navigator.of(context).push(route);
             },
           ),
+//          ListTile(
+//            title: Text('Live Data Stream2'),
+//            onTap: () {
+//              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
+//              var route = new MaterialPageRoute(
+//                  builder: (BuildContext context) => new DataStreamPage());
+//              Navigator.of(context).push(route);
+//            },
+//          ),
+          Divider(),
+
           ListTile(
-            title: Text('Live Data Stream2'),
-            onTap: () {
-              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
-              var route = new MaterialPageRoute(
-                  builder: (BuildContext context) => new DataStreamPage());
-              Navigator.of(context).push(route);
-            },
-          ),
-          ListTile(
+            leading: const Icon(Icons.settings),
             title: Text('Change Solar Charging Settings'),
             onTap: () {
-              print('moving to setings');
               var route = new MaterialPageRoute(
                   builder: (BuildContext context) =>
                       new SolarChargerSettings());
@@ -119,16 +132,16 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
               Navigator.of(context).push(route);
             },
           ),
-          ListTile(
-            title: Text('Change Delta Smart Box Settings'),
-            onTap: () {
-              print('moving to setings');
-              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
-              var route = new MaterialPageRoute(
-                  builder: (BuildContext context) => new ChangeSettings());
-              Navigator.of(context).push(route);
-            },
-          ),
+//          ListTile(
+//            title: Text('Change Delta Smart Box Settings'),
+//            onTap: () {
+//              print('moving to setings');
+//              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
+//              var route = new MaterialPageRoute(
+//                  builder: (BuildContext context) => new ChangeSettings());
+//              Navigator.of(context).push(route);
+//            },
+//          ),
           Divider(),
           ListTile(
             title: Text('Sign Out'),
@@ -361,10 +374,22 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
     };
   }
 
+  getUserDetails() {
+    FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
+      setState(() {
+        _displayName = user.displayName;
+        _displayEmail = user.email;
+      });
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     main().then((FirebaseApp app) {
+      /// This gets values for our Nav email/name
+      getUserDetails();
+
       initializeInverterCharts(app).then((dynamic _) {
         startInverterChartsListeners(app);
       });

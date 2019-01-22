@@ -27,6 +27,8 @@ class _InitialSetup extends State<InitialSetup> {
   final FocusNode _passwordFocus = new FocusNode();
   final FocusNode _ssidFocus = new FocusNode();
 
+  String radioSelection = 'register';
+
   @override
   Widget build(BuildContext context) {
     return new Scaffold(
@@ -42,13 +44,47 @@ class _InitialSetup extends State<InitialSetup> {
                       new Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: <Widget>[
-                            Text(
-                              "Create a Delta Solar Charger Account",
-                              style: _headingFont,
-                              textAlign: TextAlign.center,
-                            ),
                             new Padding(
-                                padding: const EdgeInsets.only(top: 30.0)),
+                              padding: const EdgeInsets.only(bottom: 20),
+                              child: new Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: <Widget>[
+                                  new Radio(
+                                    value: 'register',
+                                    groupValue: radioSelection,
+                                    onChanged: radioSelected,
+                                  ),
+                                  new Text(
+                                    'Make a new account',
+                                    style: new TextStyle(fontSize: 16.0),
+                                  ),
+                                  new Radio(
+                                    value: 'login',
+                                    groupValue: radioSelection,
+                                    onChanged: radioSelected,
+                                  ),
+                                  new Text(
+                                    'I have an account',
+                                    style: new TextStyle(
+                                      fontSize: 16.0,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            radioSelection == "register"
+                                ? new Text(
+                                    "Create a Delta Solar Charger Account",
+                                    style: _headingFont,
+                                    textAlign: TextAlign.center,
+                                  )
+                                : new Text(
+                                    "Login to your Delta Solar Charger Account",
+                                    style: _headingFont,
+                                    textAlign: TextAlign.center,
+                                  ),
+                            new Padding(
+                                padding: const EdgeInsets.only(top: 15.0)),
                             new ListTile(
                                 leading: const Icon(Icons.email),
                                 title: new TextField(
@@ -75,10 +111,15 @@ class _InitialSetup extends State<InitialSetup> {
                                 )),
                             new Padding(
                                 padding: const EdgeInsets.only(bottom: 15)),
-                            new RaisedButton(
-                                child: Text('Register'),
-                                onPressed: _handleRegister,
-                                padding: const EdgeInsets.only(top: 1.0)),
+                            radioSelection == "register"
+                                ? new RaisedButton(
+                                    child: const Text('Register'),
+                                    onPressed: _handleRegister,
+                                    padding: const EdgeInsets.only(top: 1.0))
+                                : new RaisedButton(
+                                    child: const Text('Login'),
+                                    onPressed: _handleLogin,
+                                    padding: const EdgeInsets.only(top: 1.0)),
                             new Padding(
                               padding: const EdgeInsets.all(15.0),
                             ),
@@ -97,6 +138,58 @@ class _InitialSetup extends State<InitialSetup> {
                           ])
                     ],
                   )));
+  }
+
+  void radioSelected(text) {
+    print(text);
+    radioSelection = text;
+    setState(() {});
+  }
+
+  void _handleLogin() {
+    setState(() {
+      registering = true;
+    });
+
+    // This function handles the login.
+    user.email = _email.text;
+    user.password = _password.text;
+
+    userAuth.verifyUser(user).then((onValue) {
+      print(onValue);
+      if (onValue == "Login Successful") {
+        registering = false;
+
+        /// Now let's send the charger ID and the user/pass to OCPP backend
+        var route = new MaterialPageRoute(
+          builder: (BuildContext context) => new SelectConnectionPage(
+                firebaseEmail: user.email,
+                firebasePassword: user.password,
+              ),
+        );
+        Navigator.of(context).push(route);
+      } else {
+        showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (buildContext) {
+              return new AlertDialog(
+                title: Text('Sign in Error'),
+                content: Text(onValue),
+                actions: <Widget>[
+                  new FlatButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        setState(() {
+                          registering = false;
+                        });
+                      },
+                      child: Text('Try Again'))
+                ],
+              );
+            });
+      }
+    });
   }
 
   void _handleRegister() {
@@ -253,6 +346,13 @@ class _SelectConnectionPageState extends State<SelectConnectionPage> {
           firebaseEmail: widget.firebaseEmail,
           firebasePassword: widget.firebasePassword),
     ));
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    print(widget.firebaseEmail);
+    print(widget.firebasePassword);
   }
 }
 
@@ -521,8 +621,16 @@ class SendWiFiPayloadAndroid extends StatefulWidget {
 }
 
 class _SendWiFiPayloadAndroidState extends State<SendWiFiPayloadAndroid> {
+  /// Boolean that tells us if the initialization process is complete
   bool processCompleted = false;
+
+  /// Boolean that tells us to show the return home button or the circular indicator
+  bool showReturnHome = false;
+
+  /// String that tells the user what stage they are up to
   String progressString = "";
+
+  /// Initialize the progress icon
   IconData progressIcon;
 
   @override
@@ -570,7 +678,16 @@ class _SendWiFiPayloadAndroidState extends State<SendWiFiPayloadAndroid> {
                       textAlign: TextAlign.center,
                     ),
                     new Padding(padding: const EdgeInsets.all(25)),
-                    const Center(child: const CircularProgressIndicator()),
+                    showReturnHome
+                        ? new RaisedButton(
+                            onPressed: () {
+                              Navigator.popUntil(
+                                  context, ModalRoute.withName('/'));
+                            },
+                            child: new Text('Return to login page'),
+                          )
+                        : const Center(
+                            child: const CircularProgressIndicator()),
                     new Padding(
                         padding: new EdgeInsets.only(
                             top: MediaQuery.of(context).size.height / 3.2))
@@ -583,7 +700,7 @@ class _SendWiFiPayloadAndroidState extends State<SendWiFiPayloadAndroid> {
     /// Now that we are connected, we can now send the payload to the controller
 
     print('Connected to the Solar Charger. Transmitting data now...');
-    bool transmissionSuccess = false;
+    dynamic transmissionSuccess = false;
 
     for (int i = 0; i < 100; i++) {
       print('Attempt $i in transmitting payload to Solar Charger');
@@ -602,10 +719,19 @@ class _SendWiFiPayloadAndroidState extends State<SendWiFiPayloadAndroid> {
           processCompleted = true;
         });
         break;
+      } else if (transmissionSuccess == "config exists") {
+        print('Configuration already exists - failed');
+
+        progressIcon = Icons.error_outline;
+        progressString =
+            "This Delta Solar Charger has already been assigned to another account. "
+            "Please login to factory reset this Solar Charger and try again";
+        showReturnHome = true;
+        setState(() {});
       }
     }
 
-    if (!transmissionSuccess) {
+    if (transmissionSuccess == false) {
       print('Transmission failed 10 times...');
       progressIcon = Icons.sync_problem;
       progressString =
@@ -658,6 +784,7 @@ class _SendWiFiPayloadAndroidState extends State<SendWiFiPayloadAndroid> {
         progressIcon = Icons.signal_wifi_off;
         progressString =
             'Connection unsuccessful. Please go back and try again';
+        showReturnHome = true;
       });
     }
   }
@@ -695,7 +822,7 @@ class _SendWiFiPayloadiOSState extends State<SendWiFiPayloadiOS> {
   }
 }
 
-Future<bool> sendInitialSetupPostRequest(
+Future sendInitialSetupPostRequest(
     connectionMethod, firebaseEmail, firebasePassword) async {
   Map requestPayload = {
     "connectionMethod": connectionMethod,
@@ -703,11 +830,16 @@ Future<bool> sendInitialSetupPostRequest(
     'firebase_password': firebasePassword,
   };
 
+  print('Request payload is :');
+  print(requestPayload);
+
   String url = "http://192.168.10.1:5000/delta_solar_charger_initial_setup";
   HttpClient httpClient = new HttpClient();
 
   /// Set our client timeout to 10 seconds.
   httpClient.connectionTimeout = const Duration(seconds: 5);
+
+  /// tempReply is the reply from the solar charger unit
   String tempReply;
 
   try {
@@ -723,20 +855,11 @@ Future<bool> sendInitialSetupPostRequest(
     return false;
   }
 
-  // Todo: have some test here to see if it's all good
-  bool success;
-
   /// Check if we got any reply from the solar charger
   if (tempReply != null) {
     /// If we got a reply then decode it and make sure the POST was successful
     Map parsedReply = json.decode(tempReply);
-
-    if (parsedReply['success'] == true) {
-      success = true;
-    }
-  } else {
-    success = false;
+    print(parsedReply['success']);
+    return parsedReply['success'];
   }
-
-  return success;
 }

@@ -116,6 +116,9 @@ class _DashboardState extends State<Dashboard> {
   /// Initialize the current back press time
   DateTime currentBackPressTime = DateTime.now().subtract(Duration(seconds: 3));
 
+  /// Initialize a ScrollController for the whole page
+  ScrollController _scrollController = new ScrollController();
+
   @override
   Widget build(BuildContext context) {
     return new WillPopScope(
@@ -128,16 +131,18 @@ class _DashboardState extends State<Dashboard> {
               UserAccountsDrawerHeader(
                 accountName: Text(_displayName),
                 accountEmail: Text(_displayEmail),
-                currentAccountPicture: const CircleAvatar(),
+//                currentAccountPicture: const CircleAvatar(),
                 decoration: new BoxDecoration(color: Colors.blue),
               ),
               ListTile(
+                leading: const Icon(Icons.dashboard),
                 title: const Text('Dashboard'),
                 onTap: () {
                   Navigator.of(context).pop();
                 },
               ),
               ListTile(
+                leading: const Icon(Icons.show_chart),
                 title: const Text('Live System Data'),
                 onTap: () {
                   var route = new MaterialPageRoute(
@@ -146,7 +151,10 @@ class _DashboardState extends State<Dashboard> {
                   Navigator.of(context).push(route);
                 },
               ),
+              Divider(),
+
               ListTile(
+                leading: const Icon(Icons.unarchive),
                 title: const Text('System Archive'),
                 onTap: () {
                   var route = new MaterialPageRoute(
@@ -156,6 +164,7 @@ class _DashboardState extends State<Dashboard> {
                 },
               ),
               ListTile(
+                leading: const Icon(Icons.offline_bolt),
                 title: const Text('Charging Session Archive'),
                 onTap: () {
                   var route = new MaterialPageRoute(
@@ -164,19 +173,22 @@ class _DashboardState extends State<Dashboard> {
                   Navigator.of(context).push(route);
                 },
               ),
+//                  ListTile(
+//                    title: Text('Live Data Stream2'),
+//                    onTap: () {
+//                      var route = new MaterialPageRoute(
+//                          builder: (
+//                              BuildContext context) => new DataStreamPage());
+//                      Navigator.of(context).pop();
+//                      Navigator.of(context).push(route);
+//                    },
+//                  ),
+              Divider(),
+
               ListTile(
-                title: Text('Live Data Stream2'),
-                onTap: () {
-                  var route = new MaterialPageRoute(
-                      builder: (BuildContext context) => new DataStreamPage());
-                  Navigator.of(context).pop();
-                  Navigator.of(context).push(route);
-                },
-              ),
-              ListTile(
+                leading: const Icon(Icons.settings),
                 title: Text('Change Solar Charging Settings'),
                 onTap: () {
-                  print('moving to setings');
                   var route = new MaterialPageRoute(
                       builder: (BuildContext context) =>
                           new SolarChargerSettings());
@@ -184,16 +196,16 @@ class _DashboardState extends State<Dashboard> {
                   Navigator.of(context).push(route);
                 },
               ),
-              ListTile(
-                title: Text('Change Delta Smart Box Settings'),
-                onTap: () {
-                  print('moving to setings');
-                  var route = new MaterialPageRoute(
-                      builder: (BuildContext context) => new ChangeSettings());
-                  Navigator.of(context).pop();
-                  Navigator.of(context).push(route);
-                },
-              ),
+//              ListTile(
+//                title: Text('Change Delta Smart Box Settings'),
+//                onTap: () {
+//                  print('moving to setings');
+//                  var route = new MaterialPageRoute(
+//                      builder: (BuildContext context) => new ChangeSettings());
+//                  Navigator.of(context).pop();
+//                  Navigator.of(context).push(route);
+//                },
+//              ),
               Divider(),
               ListTile(
                 title: Text('Sign Out'),
@@ -208,6 +220,7 @@ class _DashboardState extends State<Dashboard> {
                     child: RefreshIndicator(
                         key: _refreshIndicatorKey,
                         child: new ListView(
+                          controller: _scrollController,
                           children: <Widget>[
                             new Card(
                               child: new Column(
@@ -371,7 +384,9 @@ class _DashboardState extends State<Dashboard> {
                                   children: listOfChargingChargers),
                             ),
                             new SolarGenerationHistoryCard(),
-                            new DailyChargerBreakdownCard(),
+                            new DailyChargerBreakdownCard(
+                              scrollController: _scrollController,
+                            ),
                             new Text(
                               'Last updated: $lastUpdatedDatetime',
                               textAlign: TextAlign.center,
@@ -1297,6 +1312,11 @@ class _SolarGenerationHistoryCardState
 }
 
 class DailyChargerBreakdownCard extends StatefulWidget {
+  DailyChargerBreakdownCard({Key key, @required this.scrollController})
+      : super(key: key);
+
+  final ScrollController scrollController;
+
   @override
   _DailyChargerBreakdownCardState createState() =>
       _DailyChargerBreakdownCardState();
@@ -1318,8 +1338,6 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
 
   /// Initialize our mapOfDataArrays
   Map<String, List<AnalyticsData>> mapOfDataArrays = {};
-
-  ScrollController _scrollController = new ScrollController();
 
   @override
   Widget build(BuildContext context) {
@@ -1378,7 +1396,7 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
         /// This ListView will take in the selectedDailyChargerBreakdownData Map
         /// which is formatted like so: {chargerID: energy for that charger on selected date}
         ListView.builder(
-            controller: _scrollController,
+            physics: NeverScrollableScrollPhysics(),
             shrinkWrap: true,
             itemCount: selectedDailyChargerBreakdownData.keys.toList().length,
             itemBuilder: (context, index) {
@@ -1434,20 +1452,17 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
       selectedDailyChargerBreakdownDate = '${formatter.format(date)}';
 
       setState(() {
-        // Todo: look at this animate stuff
-//        _scrollController.animateTo(
-//          0.0,
-//          curve: Curves.easeOut,
-//          duration: const Duration(milliseconds: 300),
-//        );
-        SchedulerBinding.instance.addPostFrameCallback((_) {
-          _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        });
-        print(_scrollController.position.maxScrollExtent);
+        /// Once we have clicked on the bar chart, we need to scroll down to the bottom after the widget updates
+//        Timer(
+//            Duration(milliseconds: 200),
+//            () => widget.scrollController
+//                .jumpTo(widget.scrollController.position.maxScrollExtent));
+        Timer(
+            Duration(milliseconds: 100),
+            () => widget.scrollController.animateTo(
+                widget.scrollController.position.maxScrollExtent,
+                duration: Duration(milliseconds: 150),
+                curve: Curves.easeIn));
       });
     }
   }

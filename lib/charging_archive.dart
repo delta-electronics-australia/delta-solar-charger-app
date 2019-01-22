@@ -42,6 +42,10 @@ class _ChargingArchiveState extends State<ChargingArchive> {
   bool loadingData = false;
   var _headingFont = new TextStyle(fontSize: 20.0);
 
+  /// Initialize the strings that will define our display name and email
+  String _displayName = "";
+  String _displayEmail = "";
+
   DatabaseReference _chargingHistoryAnalyticsRef;
 
   Map validDatesPayload;
@@ -69,20 +73,21 @@ class _ChargingArchiveState extends State<ChargingArchive> {
         ),
         drawer: new Drawer(
             child: ListView(children: <Widget>[
-          DrawerHeader(
-            child: Text('Header'),
+          UserAccountsDrawerHeader(
+            accountName: Text(_displayName),
+            accountEmail: Text(_displayEmail),
+//                currentAccountPicture: const CircleAvatar(),
             decoration: new BoxDecoration(color: Colors.blue),
           ),
           ListTile(
+            leading: const Icon(Icons.dashboard),
             title: Text('Dashboard'),
             onTap: () {
-//              Navigator.of(context).pop();
-//              Navigator.of(context).pop();
-
               Navigator.of(context).popUntil(ModalRoute.withName('/Dashboard'));
             },
           ),
           ListTile(
+            leading: const Icon(Icons.show_chart),
             title: Text('Live System Data'),
             onTap: () {
               var route = new MaterialPageRoute(
@@ -91,7 +96,10 @@ class _ChargingArchiveState extends State<ChargingArchive> {
               Navigator.of(context).push(route);
             },
           ),
+          Divider(),
+
           ListTile(
+            leading: const Icon(Icons.unarchive),
             title: const Text('System Archive'),
             onTap: () {
               var route = new MaterialPageRoute(
@@ -101,24 +109,27 @@ class _ChargingArchiveState extends State<ChargingArchive> {
             },
           ),
           ListTile(
+            leading: const Icon(Icons.offline_bolt),
             title: const Text('Charging Session Archive'),
             onTap: () {
               Navigator.of(context).pop();
             },
           ),
+//          ListTile(
+//            title: Text('Live Data Stream2'),
+//            onTap: () {
+//              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
+//              var route = new MaterialPageRoute(
+//                  builder: (BuildContext context) => new DataStreamPage());
+//              Navigator.of(context).push(route);
+//            },
+//          ),
+          Divider(),
+
           ListTile(
-            title: Text('Live Data Stream2'),
-            onTap: () {
-              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
-              var route = new MaterialPageRoute(
-                  builder: (BuildContext context) => new DataStreamPage());
-              Navigator.of(context).push(route);
-            },
-          ),
-          ListTile(
+            leading: const Icon(Icons.settings),
             title: Text('Change Solar Charging Settings'),
             onTap: () {
-              print('moving to setings');
               var route = new MaterialPageRoute(
                   builder: (BuildContext context) =>
                       new SolarChargerSettings());
@@ -126,16 +137,16 @@ class _ChargingArchiveState extends State<ChargingArchive> {
               Navigator.of(context).push(route);
             },
           ),
-          ListTile(
-            title: Text('Change Delta Smart Box Settings'),
-            onTap: () {
-              print('moving to setings');
-              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
-              var route = new MaterialPageRoute(
-                  builder: (BuildContext context) => new ChangeSettings());
-              Navigator.of(context).push(route);
-            },
-          ),
+//          ListTile(
+//            title: Text('Change Delta Smart Box Settings'),
+//            onTap: () {
+//              print('moving to setings');
+//              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
+//              var route = new MaterialPageRoute(
+//                  builder: (BuildContext context) => new ChangeSettings());
+//              Navigator.of(context).push(route);
+//            },
+//          ),
           Divider(),
           ListTile(
             title: Text('Sign Out'),
@@ -231,10 +242,20 @@ class _ChargingArchiveState extends State<ChargingArchive> {
         .pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
   }
 
+  getUserDetails() {
+    FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
+      setState(() {
+        _displayName = user.displayName;
+        _displayEmail = user.email;
+      });
+    });
+  }
+
   @override
   void initState() {
     super.initState();
     main().then((FirebaseApp app) async {
+      getUserDetails();
       database = new FirebaseDatabase(app: app);
       FirebaseUser user = await FirebaseAuth.instance.currentUser();
       uid = user.uid;
@@ -300,7 +321,6 @@ class _ChargeSessionCardsState extends State<ChargeSessionCards> {
 
       /// If there are analytics for this charger on this day
       if (tempChargingAnalytics != null) {
-
         /// First sort the dates
         var chargingTimeList =
             tempChargingAnalytics.keys.toList(growable: false);
@@ -309,7 +329,6 @@ class _ChargeSessionCardsState extends State<ChargeSessionCards> {
 
         /// Loop through all of the sorted charging times
         for (String chargingTime in sortedChargingTimeList) {
-
           /// First get the duration string
           String durationString = convertSecondsToDurationString(
               tempChargingAnalytics[chargingTime]['duration_seconds']);

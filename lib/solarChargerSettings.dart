@@ -71,7 +71,11 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
           child: new ListView(
         children: <Widget>[
 //          new Padding(padding: const EdgeInsets.only(top: 15))
-          new Card(
+          Padding(
+            padding: const EdgeInsets.all(6.0),
+            child: new Card(
+                child: Padding(
+              padding: const EdgeInsets.all(8.0),
               child: singleChargingMode != null
                   ? new Column(
                       children: <Widget>[
@@ -96,8 +100,14 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
                     )
                   : new Center(
                       child: const Center(
-                          child: const CircularProgressIndicator()))),
-          new Card(
+                          child: const CircularProgressIndicator())),
+            )),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(6.0),
+            child: new Card(
+                child: Padding(
+              padding: const EdgeInsets.all(8.0),
               child: bufferAggroMode != null
                   ? new Column(
                       children: <Widget>[
@@ -107,6 +117,7 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
                         ),
                         new Text(
                           'How aggressive should we be in using the battery? The more aggressive, the more the battery will be used in standalone mode',
+                          textAlign: TextAlign.center,
                         ),
                         new DropdownButton(
                           items: bufferAggressivenessOptions
@@ -119,13 +130,21 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
                           value: bufferAggroMode,
                         ),
                         new Text(
-                            'Note: This mode will only work during Standalone: PV with Battery Backup mode'),
+                          'Note: This mode will only work during Standalone: PV with Battery Backup mode',
+                          textAlign: TextAlign.center,
+                        ),
                       ],
                     )
                   : new Center(
                       child: const Center(
-                          child: const CircularProgressIndicator()))),
-          new Card(
+                          child: const CircularProgressIndicator())),
+            )),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(6.0),
+            child: new Card(
+                child: Padding(
+              padding: const EdgeInsets.all(8.0),
               child: authenticationRequired != null
                   ? new Column(
                       children: <Widget>[
@@ -134,7 +153,9 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
                           style: _headingFont,
                         ),
                         new Text(
-                            'Will the solar charger require a RFID card authentication?'),
+                          'Will the solar charger require a RFID card authentication?',
+                          textAlign: TextAlign.center,
+                        ),
                         new DropdownButton(
                           items: authenticationRequiredOptions.keys
                               .toList()
@@ -151,23 +172,73 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
                     )
                   : new Center(
                       child: const Center(
-                          child: const CircularProgressIndicator()))),
-          new Card(
+                          child: const CircularProgressIndicator())),
+            )),
+          ),
+          new Divider(color: Colors.black),
+          new Padding(
+            padding: const EdgeInsets.all(6.0),
+            child: new Card(
+                child: Padding(
+              padding: const EdgeInsets.all(8.0),
               child: new Column(
-            children: <Widget>[
-              new Text(
-                'Firmware Updates',
-                style: _headingFont,
+                children: <Widget>[
+                  new Text(
+                    'Firmware Updates',
+                    style: _headingFont,
+                  ),
+                  new Padding(
+                      padding: const EdgeInsets.all(15),
+                      child: !checkingForUpdates
+                          ? firmwareWidget
+                          : new Center(
+                              child: const Center(
+                                  child: const CircularProgressIndicator())))
+                ],
               ),
-              new Padding(
-                  padding: const EdgeInsets.all(15),
-                  child: !checkingForUpdates
-                      ? firmwareWidget
-                      : new Center(
-                          child: const Center(
-                              child: const CircularProgressIndicator())))
-            ],
-          ))
+            )),
+          ),
+          new Padding(
+            padding: const EdgeInsets.all(6.0),
+            child: new Card(
+                child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: new Column(
+                children: <Widget>[
+                  new Text(
+                    'Factory Reset',
+                    style: _headingFont,
+                  ),
+                  new Padding(
+                      padding: const EdgeInsets.all(15),
+                      child: !checkingForUpdates
+                          ? new RaisedButton(
+                              onPressed: () {
+                                showModalBottomSheet(
+                                    context: context,
+                                    builder: (builder) {
+                                      return new Column(children: <Widget>[
+                                        new Text(
+                                            'Are you sure you want to factory reset your Delta Solar Charger? This will remove ALL data associated with your account'),
+                                        new RaisedButton(
+                                          color: Colors.red,
+                                          onPressed: () {
+
+                                          },
+                                          child: const Text('Yes',),
+                                        )
+                                      ]);
+                                    });
+                              },
+                              child: const Text("Perform a factory reset"),
+                            )
+                          : new Center(
+                              child: const Center(
+                                  child: const CircularProgressIndicator())))
+                ],
+              ),
+            )),
+          )
         ],
       )),
     );
