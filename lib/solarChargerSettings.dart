@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
 import 'dart:io';
-import 'dart:convert';
 import 'dart:async';
+
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
+import 'package:smart_charging_app/authenticate.dart';
+import 'package:smart_charging_app/liveDataStream.dart';
+import 'package:smart_charging_app/charging_archive.dart';
+import 'package:smart_charging_app/inverter_archive.dart';
+import 'package:smart_charging_app/charger_info.dart';
+
 
 Future<FirebaseApp> main() async {
   final FirebaseApp app = await FirebaseApp.configure(
@@ -32,6 +39,10 @@ class SolarChargerSettings extends StatefulWidget {
 
 class _SolarChargerSettingsState extends State<SolarChargerSettings> {
   FirebaseDatabase database;
+
+  /// Initialize the strings that will define our display name and email
+  String _displayName = "";
+  String _displayEmail = "";
 
   final _headingFont = const TextStyle(fontSize: 25.0);
   Map<String, String> chargingModeOptions = {
@@ -67,6 +78,104 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
   Widget build(BuildContext context) {
     return new Scaffold(
       appBar: new AppBar(title: const Text('Delta Solar Charger Settings')),
+      drawer: new Drawer(
+          child: ListView(children: <Widget>[
+        UserAccountsDrawerHeader(
+          accountName: Text(_displayName),
+          accountEmail: Text(_displayEmail),
+//                currentAccountPicture: const CircleAvatar(),
+          decoration: new BoxDecoration(color: Colors.blue),
+        ),
+        ListTile(
+          leading: const Icon(Icons.dashboard),
+          title: const Text('Dashboard'),
+          onTap: () {
+            Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.show_chart),
+          title: const Text('Live System Data'),
+          onTap: () {
+            var route = new MaterialPageRoute(
+                builder: (BuildContext context) => new DataStreamPage1());
+            Navigator.of(context).pop();
+            Navigator.of(context).push(route);
+          },
+        ),
+        Divider(),
+
+        ListTile(
+          leading: const Icon(Icons.unarchive),
+          title: const Text('System Archive'),
+          onTap: () {
+            var route = new MaterialPageRoute(
+                builder: (BuildContext context) => new InverterArchive());
+            Navigator.of(context).pop();
+            Navigator.of(context).push(route);
+          },
+        ),
+        ListTile(
+          leading: const Icon(Icons.offline_bolt),
+          title: const Text('Charging Session Archive'),
+          onTap: () {
+            var route = new MaterialPageRoute(
+                builder: (BuildContext context) => new ChargingArchive());
+            Navigator.of(context).pop();
+            Navigator.of(context).push(route);
+          },
+        ),
+//                  ListTile(
+//                    title: Text('Live Data Stream2'),
+//                    onTap: () {
+//                      var route = new MaterialPageRoute(
+//                          builder: (
+//                              BuildContext context) => new DataStreamPage());
+//                      Navigator.of(context).pop();
+//                      Navigator.of(context).push(route);
+//                    },
+//                  ),
+        Divider(),
+
+        ListTile(
+          leading: const Icon(Icons.power),
+          title: Text('Connected Chargers'),
+          onTap: () {
+            var route = new MaterialPageRoute(
+                builder: (BuildContext context) => new ChargerInfo());
+            Navigator.of(context).pop();
+            Navigator.of(context).push(route);
+          },
+        ),
+
+        Divider(),
+
+        ListTile(
+          leading: const Icon(Icons.settings),
+          title: Text('Change Solar Charging Settings'),
+          onTap: () {
+            var route = new MaterialPageRoute(
+                builder: (BuildContext context) => new SolarChargerSettings());
+            Navigator.of(context).pop();
+            Navigator.of(context).push(route);
+          },
+        ),
+//              ListTile(
+//                title: Text('Change Delta Smart Box Settings'),
+//                onTap: () {
+//                  print('moving to setings');
+//                  var route = new MaterialPageRoute(
+//                      builder: (BuildContext context) => new ChangeSettings());
+//                  Navigator.of(context).pop();
+//                  Navigator.of(context).push(route);
+//                },
+//              ),
+        Divider(),
+        ListTile(
+          title: Text('Sign Out'),
+          onTap: _signOut,
+        ),
+      ])),
       body: new Center(
           child: new ListView(
         children: <Widget>[
@@ -191,9 +300,13 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
                       padding: const EdgeInsets.all(15),
                       child: !checkingForUpdates
                           ? firmwareWidget
-                          : new Center(
-                              child: const Center(
-                                  child: const CircularProgressIndicator())))
+                          : new Padding(
+                              child: new Center(
+                                  child: const Center(
+                                      child:
+                                          const CircularProgressIndicator())),
+                              padding: const EdgeInsets.all(10),
+                            ))
                 ],
               ),
             )),
@@ -217,24 +330,18 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
                                 showModalBottomSheet(
                                     context: context,
                                     builder: (builder) {
-                                      return new Column(children: <Widget>[
-                                        new Text(
-                                            'Are you sure you want to factory reset your Delta Solar Charger? This will remove ALL data associated with your account'),
-                                        new RaisedButton(
-                                          color: Colors.red,
-                                          onPressed: () {
-
-                                          },
-                                          child: const Text('Yes',),
-                                        )
-                                      ]);
+                                      return new FactoryReset();
                                     });
                               },
                               child: const Text("Perform a factory reset"),
                             )
-                          : new Center(
-                              child: const Center(
-                                  child: const CircularProgressIndicator())))
+                          : new Padding(
+                              child: new Center(
+                                  child: const Center(
+                                      child:
+                                          const CircularProgressIndicator())),
+                              padding: const EdgeInsets.all(10),
+                            ))
                 ],
               ),
             )),
@@ -375,9 +482,28 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
     setState(() {});
   }
 
+  getUserDetails() {
+    FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
+      setState(() {
+        _displayName = user.displayName;
+        _displayEmail = user.email;
+      });
+    });
+  }
+
+  Future<Null> _signOut() async {
+    await FirebaseAuth.instance.signOut();
+    print('Signed out');
+    Navigator.of(context)
+        .pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
+  }
+
   @override
   void initState() {
     super.initState();
+
+    getUserDetails();
+
     main().then((FirebaseApp app) {
       database = new FirebaseDatabase(app: app);
       getEVInputs(app);
@@ -405,5 +531,147 @@ class _UpdateFirmwareState extends State<UpdateFirmware> {
     return Container(
       child: new Text('This is the update firmware page'),
     );
+  }
+}
+
+class FactoryReset extends StatefulWidget {
+  @override
+  _FactoryResetState createState() => _FactoryResetState();
+}
+
+class _FactoryResetState extends State<FactoryReset> {
+  bool showLoginPrompt = false;
+  bool loggingIn = false;
+
+  final TextEditingController _email = new TextEditingController();
+  final TextEditingController _pass = new TextEditingController();
+
+  UserData user = new UserData();
+  UserAuth userAuth = new UserAuth();
+
+  String get email => _email.text;
+
+  String get password => _pass.text;
+
+  @override
+  Widget build(BuildContext context) {
+    return loggingIn
+        ? const Center(child: const CircularProgressIndicator())
+        : new Container(
+            height: MediaQuery.of(context).size.height / 2.5,
+            child: showLoginPrompt
+                ? new Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: <Widget>[
+                        new Padding(
+                          padding: const EdgeInsets.all(15),
+                          child: new Text("Please Re-enter Your Credentials",
+                              style: const TextStyle(fontSize: 20.0)),
+                        ),
+                        new ListTile(
+                            leading: const Icon(Icons.email),
+                            title: new TextField(
+                              controller: _email,
+                              decoration:
+                                  new InputDecoration(hintText: "Email"),
+                            )),
+                        new ListTile(
+                            leading: const Icon(Icons.lock),
+                            title: new TextField(
+                              controller: _pass,
+                              decoration:
+                                  new InputDecoration(hintText: "Password"),
+                              obscureText: true,
+                            )),
+                        new Padding(
+                          padding: const EdgeInsets.all(15.0),
+                        ),
+                        new RaisedButton(
+                          child: new Text("Login"),
+                          onPressed: () {
+                            _handleLogin();
+                          },
+//                    padding: const EdgeInsets.only(top: 1.0),
+                        ),
+                      ])
+                : new Padding(
+                    padding: const EdgeInsets.all(15),
+                    child: new Column(children: <Widget>[
+                      new Text(
+                        'Are you sure you want to factory reset your Delta Solar Charger? This will remove ALL data associated with your account',
+                        style: TextStyle(fontSize: 18),
+                        textAlign: TextAlign.center,
+                      ),
+                      new Expanded(
+                          child: new Align(
+                        child: new Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: <Widget>[
+                            new RaisedButton(
+//                                                    color: Colors.red,
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
+                              child: const Text(
+                                'No',
+                              ),
+                            ),
+                            new RaisedButton(
+                              color: Colors.red,
+                              onPressed: () {
+                                setState(() {
+                                  showLoginPrompt = true;
+                                });
+                              },
+                              child: const Text(
+                                'Yes',
+                              ),
+                            )
+                          ],
+                        ),
+                        alignment: Alignment.bottomCenter,
+                      )),
+                    ]),
+                  ),
+          );
+  }
+
+  void _handleLogin() {
+    // Set loggingIn to true, so we have a circular progress icon
+    setState(() {
+      loggingIn = true;
+    });
+
+    user.email = email;
+    user.password = password;
+
+    userAuth.verifyUser(user).then((onValue) {
+      print(onValue);
+      if (onValue == "Login Successful") {
+        loggingIn = false;
+        print('success!');
+        setState(() {});
+      } else {
+        showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (buildContext) {
+              return new AlertDialog(
+                title: Text('Sign in Error'),
+                content: Text(onValue),
+                actions: <Widget>[
+                  new FlatButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        setState(() {
+                          loggingIn = false;
+                        });
+                      },
+                      child: Text('Try Again'))
+                ],
+              );
+            });
+      }
+    });
   }
 }

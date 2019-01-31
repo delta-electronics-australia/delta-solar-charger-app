@@ -141,7 +141,6 @@ class _InitialSetup extends State<InitialSetup> {
   }
 
   void radioSelected(text) {
-    print(text);
     radioSelection = text;
     setState(() {});
   }
@@ -251,12 +250,6 @@ class SelectConnectionPage extends StatefulWidget {
 
 class _SelectConnectionPageState extends State<SelectConnectionPage> {
   final _headingFont = const TextStyle(fontSize: 20.0);
-
-  Map<String, bool> interfaceMap = {
-    'ethernet': false,
-    'wifi': false,
-    '3g': false
-  };
 
   String selectedConnectionMethod;
 

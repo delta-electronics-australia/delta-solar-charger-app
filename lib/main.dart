@@ -147,11 +147,11 @@ class _LandingPageState extends State<LandingPage> {
                                           leading: const Icon(Icons.email),
                                           title: new TextField(
                                             controller: _email,
-//                                            focusNode: _emailFocus,
-//                                            onSubmitted: (String value) {
-//                                              FocusScope.of(context)
-//                                                  .requestFocus(_passFocus);
-//                                            },
+                                            focusNode: _emailFocus,
+                                            onSubmitted: (String value) {
+                                              FocusScope.of(context)
+                                                  .requestFocus(_passFocus);
+                                            },
                                             decoration: new InputDecoration(
                                                 hintText: "Email"),
                                           )),
@@ -159,10 +159,10 @@ class _LandingPageState extends State<LandingPage> {
                                           leading: const Icon(Icons.lock),
                                           title: new TextField(
                                             controller: _pass,
-//                                            focusNode: _passFocus,
-//                                            onSubmitted: (String value) {
-//                                              _handleLogin();
-//                                            },
+                                            focusNode: _passFocus,
+                                            onSubmitted: (String value) {
+                                              _handleLogin();
+                                            },
                                             decoration: new InputDecoration(
                                                 hintText: "Password"),
                                             obscureText: true,

@@ -211,7 +211,7 @@ class _ChangeSettingsState extends State<ChangeSettings> {
         showDialog(
             context: context,
             barrierDismissible: false,
-            builder: (BuildContext) {
+            builder: (buildContext) {
               return new AlertDialog(
                 title: Text('Sign in Error'),
                 content: Text(onValue),

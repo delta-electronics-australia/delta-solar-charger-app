@@ -5,12 +5,13 @@ import 'dart:io';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:smart_charging_app/change_settings.dart';
-import 'package:smart_charging_app/firebase_transfer.dart';
+
 import 'package:smart_charging_app/archivedChargingSession.dart';
 import 'package:smart_charging_app/inverter_archive.dart';
 import 'package:smart_charging_app/solarChargerSettings.dart';
 import 'package:smart_charging_app/liveDataStream.dart';
+import 'package:smart_charging_app/charger_info.dart';
+
 
 import 'package:charts_flutter/flutter.dart' as charts;
 import 'package:intl/intl.dart';
@@ -124,6 +125,21 @@ class _ChargingArchiveState extends State<ChargingArchive> {
 //              Navigator.of(context).push(route);
 //            },
 //          ),
+          Divider(),
+
+          ListTile(
+            leading: const Icon(Icons.power),
+            title: Text('Connected Chargers'),
+            onTap: () {
+              var route = new MaterialPageRoute(
+                  builder: (BuildContext context) =>
+                  new ChargerInfo());
+              Navigator.of(context).pop();
+              Navigator.of(context).push(route);
+
+            },
+          ),
+
           Divider(),
 
           ListTile(
