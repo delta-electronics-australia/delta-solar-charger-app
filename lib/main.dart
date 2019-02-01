@@ -66,10 +66,10 @@ class _LandingPageState extends State<LandingPage> {
       loggingIn = true;
     });
 
-//    user.email = email;
-//    user.password = password;
-    user.email = 'jgv115@gmail.com';
-    user.password = 'test123';
+    user.email = email;
+    user.password = password;
+//    user.email = 'jgv115@gmail.com';
+//    user.password = 'test123';
 
     userAuth.verifyUser(user).then((onValue) {
       print(onValue);

@@ -127,7 +127,7 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
             onTap: () {
               var route = new MaterialPageRoute(
                   builder: (BuildContext context) => new ChargerInfo());
-              Navigator.of(context).pop();
+              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
               Navigator.of(context).push(route);
             },
           ),

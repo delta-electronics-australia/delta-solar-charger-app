@@ -134,7 +134,7 @@ class _ChargingArchiveState extends State<ChargingArchive> {
               var route = new MaterialPageRoute(
                   builder: (BuildContext context) =>
                   new ChargerInfo());
-              Navigator.of(context).pop();
+              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
               Navigator.of(context).push(route);
 
             },

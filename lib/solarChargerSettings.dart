@@ -13,7 +13,6 @@ import 'package:smart_charging_app/charging_archive.dart';
 import 'package:smart_charging_app/inverter_archive.dart';
 import 'package:smart_charging_app/charger_info.dart';
 
-
 Future<FirebaseApp> main() async {
   final FirebaseApp app = await FirebaseApp.configure(
     name: 'smart-charging-app',
@@ -69,6 +68,7 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
   StreamSubscription _singleChargingModeSubscription;
   StreamSubscription _bufferAggroModeSubscription;
   StreamSubscription _authenticationRequiredSubscription;
+  StreamSubscription _versionSubscription;
 
   bool checkingForUpdates = false;
 
@@ -143,7 +143,7 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
           onTap: () {
             var route = new MaterialPageRoute(
                 builder: (BuildContext context) => new ChargerInfo());
-            Navigator.of(context).pop();
+            Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
             Navigator.of(context).push(route);
           },
         ),
@@ -351,6 +351,39 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
     );
   }
 
+  void updateDSCFirmware(uid, currentVersion) {
+    // Todo: hasn't been tested yet
+
+    checkingForUpdates = true;
+    setState(() {});
+
+    /// 1) First send a Firebase message to do the firmware update
+    database
+        .reference()
+        .child('users/$uid/evc_inputs/')
+        .update({'dsc_firmware_update': true});
+
+    /// 2) Then start a listener and listen for ranges in current version
+    _versionSubscription = database
+        .reference()
+        .child('users/$uid/version')
+        .onValue
+        .listen((Event event) {
+      if (event.snapshot.value != currentVersion) {
+        /// If the version is now different, we display it on the UI
+        firmwareWidget = new Column(
+          children: <Widget>[
+            new Text('Current version: v${event.snapshot.value}'),
+            new Padding(padding: const EdgeInsets.only(top: 10)),
+            const Text('No update available')
+          ],
+        );
+        checkingForUpdates = false;
+        setState(() {});
+      }
+    });
+  }
+
   checkForUpdates() async {
     /// This function checks for updates
 
@@ -374,9 +407,7 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
           new Text('Current version: v${versionNumber.value}'),
           new FlatButton(
               onPressed: () {
-                var route = new MaterialPageRoute(
-                    builder: (BuildContext context) => new UpdateFirmware());
-                Navigator.of(context).push(route);
+                updateDSCFirmware(user.uid, versionNumber.value);
               },
               child: new Text(
                   'Update to v${latestVersionNumber.value} available. Click to continue'))
@@ -516,21 +547,9 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
     _singleChargingModeSubscription.cancel();
     _bufferAggroModeSubscription.cancel();
     _authenticationRequiredSubscription.cancel();
+    _versionSubscription.cancel();
+
     print('disposed');
-  }
-}
-
-class UpdateFirmware extends StatefulWidget {
-  @override
-  _UpdateFirmwareState createState() => _UpdateFirmwareState();
-}
-
-class _UpdateFirmwareState extends State<UpdateFirmware> {
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      child: new Text('This is the update firmware page'),
-    );
   }
 }
 

@@ -1376,7 +1376,7 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
                   defaultRenderer: new charts.BarRendererConfig<DateTime>(
 
                       // Todo: we still need to figure out the groupingtype
-                      groupingType: charts.BarGroupingType.groupedStacked),
+                      groupingType: charts.BarGroupingType.stacked),
                   domainAxis:
                       new charts.DateTimeAxisSpec(usingBarRenderer: true),
                   defaultInteractions: true,
