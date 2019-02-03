@@ -18,6 +18,7 @@ import 'package:charts_flutter/flutter.dart' as charts;
 import 'package:intl/intl.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:fluttertoast/fluttertoast.dart';
+import 'package:vibration/vibration.dart';
 
 Future<FirebaseApp> main() async {
   final FirebaseApp app = await FirebaseApp.configure(
@@ -438,9 +439,13 @@ class _DashboardState extends State<Dashboard> {
     /// If the different in time between when the last back button was pressed and when
     /// the current button is pressed...
     if (now.difference(currentBackPressTime) > Duration(seconds: 3)) {
+
       /// Then we show a toast for the user to confirm that they want to exit the app
       currentBackPressTime = now;
       Fluttertoast.showToast(msg: 'Press back again to exit app');
+
+      /// Vibrate the phone to get the user's attention
+      Vibration.vibrate(duration: 25);
 
       /// Prevent the back button from working
       return new Future(() => false);

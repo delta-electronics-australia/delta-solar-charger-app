@@ -7,6 +7,8 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'package:vibration/vibration.dart';
+
 import 'package:smart_charging_app/liveDataStream.dart';
 import 'package:smart_charging_app/solarChargerSettings.dart';
 import 'package:smart_charging_app/charging_archive.dart';
@@ -43,6 +45,10 @@ class _ChargerInfoState extends State<ChargerInfo> {
   String _displayName = "";
   String _displayEmail = "";
 
+  List<Widget> chargerCardList = [];
+
+  StreamSubscription _evChargersSubscription;
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -75,7 +81,6 @@ class _ChargerInfoState extends State<ChargerInfo> {
             },
           ),
           Divider(),
-
           ListTile(
             leading: const Icon(Icons.unarchive),
             title: const Text('System Archive'),
@@ -96,18 +101,7 @@ class _ChargerInfoState extends State<ChargerInfo> {
               Navigator.of(context).push(route);
             },
           ),
-//                  ListTile(
-//                    title: Text('Live Data Stream2'),
-//                    onTap: () {
-//                      var route = new MaterialPageRoute(
-//                          builder: (
-//                              BuildContext context) => new DataStreamPage());
-//                      Navigator.of(context).pop();
-//                      Navigator.of(context).push(route);
-//                    },
-//                  ),
           Divider(),
-
           ListTile(
             leading: const Icon(Icons.power),
             title: Text('Connected Chargers'),
@@ -115,9 +109,7 @@ class _ChargerInfoState extends State<ChargerInfo> {
               Navigator.of(context).pop();
             },
           ),
-
           Divider(),
-
           ListTile(
             leading: const Icon(Icons.settings),
             title: Text('Change Solar Charging Settings'),
@@ -129,16 +121,6 @@ class _ChargerInfoState extends State<ChargerInfo> {
               Navigator.of(context).push(route);
             },
           ),
-//              ListTile(
-//                title: Text('Change Delta Smart Box Settings'),
-//                onTap: () {
-//                  print('moving to setings');
-//                  var route = new MaterialPageRoute(
-//                      builder: (BuildContext context) => new ChangeSettings());
-//                  Navigator.of(context).pop();
-//                  Navigator.of(context).push(route);
-//                },
-//              ),
           Divider(),
           ListTile(
             title: Text('Sign Out'),
@@ -148,7 +130,7 @@ class _ChargerInfoState extends State<ChargerInfo> {
         body: new OrientationBuilder(builder: (context, orientation) {
           return GridView.count(
             crossAxisCount: 2,
-            children: getChargerCards(),
+            children: chargerCardList,
             childAspectRatio: orientation == Orientation.portrait ? 2 / 3 : 1,
           );
         }));
@@ -162,49 +144,52 @@ class _ChargerInfoState extends State<ChargerInfo> {
   }
 
   List<Widget> getChargerCards() {
+    /// This function will get the cards that will contain the charger ID and an image
     List<Widget> chargerCardList = [];
 
+    print('Im in getChargerCards!');
+
+    /// Loop through the class list evChargerList
     for (String chargerID in evChargerList) {
       print('charger id coming: $chargerID');
-      chargerCardList.add(new ChargerCard(chargerID: chargerID, app: app));
+
+      /// Now add the our custom ChargerCard widget into the chargerCardList
+      /// Note that we are using an ObjectKey so Flutter knows which charger ID
+      /// has been added or removed.
+      chargerCardList.add(new ChargerCard(
+          key: new ObjectKey(chargerID), chargerID: chargerID, app: app));
     }
 
     return chargerCardList;
   }
 
   void grabConnectedChargers() async {
-    /// This function will grab all of our registered chargers
+    /// This function will be called as soon as the connected charger page is loaded
+    /// It will start a listener on the ev_chargers node and callback when that node
+    /// has changed
 
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
     final FirebaseDatabase database = new FirebaseDatabase(app: app);
     String uid = user.uid;
 
     /// We listen for any changes in the ev chargers node
-    database
+    _evChargersSubscription = database
         .reference()
         .child('users/$uid/ev_chargers')
         .onValue
         .listen((Event event) {
-      print('ev chargers has changed!!!');
-
       DataSnapshot snapshot = event.snapshot;
       evChargerList = snapshot.value.keys.toList();
 
-      print(evChargerList);
+      print('New EV Charget node: $evChargerList');
+
+      /// Only get our charger cards if there are no cards (first run)
+      /// If the ev charger node changes, getChargerCards will be run in
+      /// didUpdateWidget
+      chargerCardList = getChargerCards();
 
       setState(() {});
     });
-
-//    /// Get all registered chargers and put them into a list
-//    database
-//        .reference()
-//        .child('users/$uid/ev_chargers')
-//        .once()
-//        .then((DataSnapshot snapshot) {
-//      evChargerList = snapshot.value.keys.toList();
-//
-//      setState(() {});
-//    });
   }
 
   void getUserDetails() {
@@ -231,6 +216,7 @@ class _ChargerInfoState extends State<ChargerInfo> {
   @override
   void dispose() {
     super.dispose();
+    _evChargersSubscription.cancel();
   }
 }
 
@@ -249,7 +235,10 @@ class ChargerCard extends StatefulWidget {
 }
 
 class _ChargerCardState extends State<ChargerCard> {
+  /// Initialize the boolean that tells us if we're loading data
   bool loadingData = true;
+
+  /// Initialize the boolean that tells us if this charger is online or not
   bool chargerOnline = false;
 
   /// Initialize the string that holds the charger model
@@ -315,16 +304,26 @@ class _ChargerCardState extends State<ChargerCard> {
                   });
             },
             onLongPress: () {
-              print('long press!');
+              /// Vibrate the phone for 15ms
+              Vibration.vibrate(duration: 15);
 
-              // Todo: put a vibration in here
               showModalBottomSheet(
                   context: context,
                   builder: (builder) {
-                    return DeleteChargerModal(
-                      app: widget.app,
-                      chargerID: widget.chargerID,
-                    );
+                    if (!chargerOnline) {
+                      return DeleteChargerModal(
+                        app: widget.app,
+                        chargerID: widget.chargerID,
+                      );
+                    } else {
+                      return new Padding(
+                        child: const Text(
+                          'Cannot delete charger, charger is still alive',
+                          textAlign: TextAlign.center,
+                        ),
+                        padding: const EdgeInsets.all(10),
+                      );
+                    }
                   });
             },
           );
@@ -333,7 +332,8 @@ class _ChargerCardState extends State<ChargerCard> {
   Widget getChargerImage() {
     String chargerModelName = '';
 
-    print('Getting charger image with $chargerModel');
+    print(
+        'Getting charger image for $chargerModel with an online status of $chargerOnline');
 
     if (chargerModel != null) {
       if (chargerModel.startsWith('EVPE')) {
@@ -341,54 +341,82 @@ class _ChargerCardState extends State<ChargerCard> {
       }
       if (chargerOnline) {
         return new Flexible(
-          child: new Image.asset('assets/img/ACMP/$chargerModelName.png'),
+          child: new Image.asset(
+            'assets/img/ACMP/$chargerModelName.png',
+            gaplessPlayback: true,
+          ),
           fit: FlexFit.tight,
         );
       } else {
         return new Flexible(
-          child:
-              new Image.asset('assets/img/ACMP/${chargerModelName}_faded.png'),
+          child: new Image.asset(
+            'assets/img/ACMP/${chargerModelName}_faded.png',
+            gaplessPlayback: true,
+          ),
           fit: FlexFit.tight,
         );
       }
     } else {
       return new Flexible(
-        child:
-        new Image.asset('assets/img/unknowncharger.png'),
+        child: new Image.asset(
+          'assets/img/unknowncharger.png',
+          gaplessPlayback: true,
+        ),
         fit: FlexFit.tight,
       );
     }
   }
 
   void startChargerInfoListener() async {
-    /// For each charger, we need to listen to any changes in status
+    /// This is called as soon as the charger card is created.
+    /// This function will to listen to any changes in status of the charger
 
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
     final FirebaseDatabase database = new FirebaseDatabase(app: widget.app);
     String uid = user.uid;
 
-    /// Start an onValue listener and update UI every time information changes
+    /// Start an onValue listener for the charger's information and
+    /// update the UI every time information changes
     _chargerInfoSubscription = database
         .reference()
         .child('users/$uid/evc_inputs/${widget.chargerID}')
         .onValue
         .listen((Event event) {
+      /// First check if the charger ID node exists for the charger ID
       if (event.snapshot.value != null) {
+        /// Now check if there is charger info for the charger ID
         if (event.snapshot.value['charger_info'] == null) {
+          /// If there isn't any info, then set the chargerModel variable to null
           chargerModel = null;
-        } else {
+        }
+
+        /// If there IS charger info for this charger ID
+        else {
+          /// Then we assign the chargerModel variable to be the model listed
+          /// in the info
           chargerModel =
               event.snapshot.value['charger_info']['chargePointModel'];
         }
+
+        /// Also take the alive status in Firebase as the chargerOnline variable
         chargerOnline = event.snapshot.value['alive'];
-      } else {
+      }
+
+      /// If no node exists for the charger ID
+      else {
+        /// Set our model to null and our online status as false
         chargerModel = null;
         chargerOnline = false;
       }
+
+      /// Now that we are done loading info, we can rebuild our card
       loadingData = false;
-      setState(() {
-        print(chargerOnline);
-      });
+
+      if (mounted) {
+        setState(() {
+          print('${widget.chargerID} online status is: $chargerOnline');
+        });
+      }
     });
   }
 
@@ -561,7 +589,7 @@ class _DeleteChargerModalState extends State<DeleteChargerModal> {
   }
 
   void deleteCharger() async {
-    // Todo: we need to check if the charger is alive first
+    /// This function is called when the delete charger button is pressed
 
     deletingCharger = true;
     setState(() {});
