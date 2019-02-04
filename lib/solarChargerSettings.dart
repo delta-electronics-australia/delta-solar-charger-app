@@ -327,7 +327,7 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
                       child: !checkingForUpdates
                           ? new RaisedButton(
                               onPressed: () {
-                                showModalBottomSheet(
+                                showDialog(
                                     context: context,
                                     builder: (builder) {
                                       return new FactoryReset();
@@ -352,7 +352,6 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
   }
 
   void updateDSCFirmware(uid, currentVersion) {
-    // Todo: hasn't been tested yet
 
     checkingForUpdates = true;
     setState(() {});
@@ -559,8 +558,7 @@ class FactoryReset extends StatefulWidget {
 }
 
 class _FactoryResetState extends State<FactoryReset> {
-  bool showLoginPrompt = false;
-  bool loggingIn = false;
+  bool verifying = false;
 
   final TextEditingController _email = new TextEditingController();
   final TextEditingController _pass = new TextEditingController();
@@ -572,93 +570,64 @@ class _FactoryResetState extends State<FactoryReset> {
 
   String get password => _pass.text;
 
+  FirebaseApp app;
+
   @override
   Widget build(BuildContext context) {
-    return loggingIn
-        ? const Center(child: const CircularProgressIndicator())
-        : new Container(
-            height: MediaQuery.of(context).size.height / 2.5,
-            child: showLoginPrompt
-                ? new Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: <Widget>[
-                        new Padding(
-                          padding: const EdgeInsets.all(15),
-                          child: new Text("Please Re-enter Your Credentials",
-                              style: const TextStyle(fontSize: 20.0)),
-                        ),
-                        new ListTile(
-                            leading: const Icon(Icons.email),
-                            title: new TextField(
-                              controller: _email,
-                              decoration:
-                                  new InputDecoration(hintText: "Email"),
-                            )),
-                        new ListTile(
-                            leading: const Icon(Icons.lock),
-                            title: new TextField(
-                              controller: _pass,
-                              decoration:
-                                  new InputDecoration(hintText: "Password"),
-                              obscureText: true,
-                            )),
-                        new Padding(
-                          padding: const EdgeInsets.all(15.0),
-                        ),
-                        new RaisedButton(
-                          child: new Text("Login"),
-                          onPressed: () {
-                            _handleLogin();
-                          },
-//                    padding: const EdgeInsets.only(top: 1.0),
-                        ),
-                      ])
-                : new Padding(
-                    padding: const EdgeInsets.all(15),
-                    child: new Column(children: <Widget>[
-                      new Text(
-                        'Are you sure you want to factory reset your Delta Solar Charger? This will remove ALL data associated with your account',
-                        style: TextStyle(fontSize: 18),
-                        textAlign: TextAlign.center,
-                      ),
-                      new Expanded(
-                          child: new Align(
-                        child: new Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: <Widget>[
-                            new RaisedButton(
-//                                                    color: Colors.red,
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                              },
-                              child: const Text(
-                                'No',
-                              ),
-                            ),
-                            new RaisedButton(
-                              color: Colors.red,
-                              onPressed: () {
-                                setState(() {
-                                  showLoginPrompt = true;
-                                });
-                              },
-                              child: const Text(
-                                'Yes',
-                              ),
-                            )
-                          ],
-                        ),
-                        alignment: Alignment.bottomCenter,
-                      )),
-                    ]),
+    return new SimpleDialog(
+      children: verifying
+          ? <Widget>[
+              new Center(
+                  child: const Center(child: const CircularProgressIndicator()))
+            ]
+          : <Widget>[
+              new Padding(
+                padding: const EdgeInsets.all(15),
+                child: new Text("Please Re-enter Your Credentials",
+                    style: const TextStyle(fontSize: 20.0)),
+              ),
+              new ListTile(
+                  leading: const Icon(Icons.email),
+                  title: new TextField(
+                    controller: _email,
+                    decoration: new InputDecoration(hintText: "Email"),
+                  )),
+              new ListTile(
+                  leading: const Icon(Icons.lock),
+                  title: new TextField(
+                    controller: _pass,
+                    decoration: new InputDecoration(hintText: "Password"),
+                    obscureText: true,
+                  )),
+              new Padding(
+                child: const Text(
+                  'Note that you will lose ALL of your information if you proceed. Are you sure you want to do this?',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
                   ),
-          );
+                  textAlign: TextAlign.center,
+                ),
+                padding: const EdgeInsets.all(10),
+              ),
+              new Padding(
+                padding: const EdgeInsets.all(15.0),
+                child: new RaisedButton(
+                  child: new Text("Verify"),
+                  onPressed: () {
+                    _handleVerify();
+                  },
+                ),
+              ),
+            ],
+    );
   }
 
-  void _handleLogin() {
+  void _handleVerify() {
     // Set loggingIn to true, so we have a circular progress icon
     setState(() {
-      loggingIn = true;
+      verifying = true;
     });
 
     user.email = email;
@@ -667,9 +636,10 @@ class _FactoryResetState extends State<FactoryReset> {
     userAuth.verifyUser(user).then((onValue) {
       print(onValue);
       if (onValue == "Login Successful") {
-        loggingIn = false;
+        verifying = false;
         print('success!');
-        setState(() {});
+
+        _performFactoryReset();
       } else {
         showDialog(
             context: context,
@@ -683,7 +653,7 @@ class _FactoryResetState extends State<FactoryReset> {
                       onPressed: () {
                         Navigator.of(context).pop();
                         setState(() {
-                          loggingIn = false;
+                          verifying = false;
                         });
                       },
                       child: Text('Try Again'))
@@ -691,6 +661,34 @@ class _FactoryResetState extends State<FactoryReset> {
               );
             });
       }
+    });
+  }
+
+  void _performFactoryReset() async {
+    FirebaseUser user = await FirebaseAuth.instance.currentUser();
+    final FirebaseDatabase database = new FirebaseDatabase(app: app);
+    String uid = user.uid;
+
+    database
+        .reference()
+        .child('users/$uid/evc_inputs/')
+        .update({'factory_reset': true});
+
+    _signOut();
+  }
+
+  Future<Null> _signOut() async {
+    await FirebaseAuth.instance.signOut();
+    print('Signed out');
+    Navigator.of(context)
+        .pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    main().then((FirebaseApp firebaseApp) {
+      app = firebaseApp;
     });
   }
 }

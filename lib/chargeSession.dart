@@ -51,7 +51,7 @@ class _ChargeSessionPageState extends State<ChargeSessionPage> {
   Widget build(BuildContext context) {
     return new Scaffold(
         appBar: new AppBar(
-          title: new Text("Live System Data"),
+          title: new Text("Live Charging Data"),
         ),
         body: new Center(
             child: new ListView(
@@ -112,7 +112,6 @@ class _ChargeSessionLineState extends State<ChargeSessionLine> {
   DatabaseReference _chargingSessionRef;
   StreamSubscription<Event> _chargingSessionSubscription;
 
-//  List<Widget> chartObjList;
   Widget chartObj;
 
   Map chargeSessionChartDataObject;
@@ -257,6 +256,7 @@ class _ChargeSessionLineState extends State<ChargeSessionLine> {
       }
 
       chartObj = conditionChargingSessionChartData();
+
       setState(() {});
     });
   }

@@ -99,8 +99,6 @@ class _DashboardState extends State<Dashboard> {
 
   Map inverterHistoryData = {'btsoc': '0.0'};
 
-  Map<String, String> chargingEnergyUsedMap = {};
-
   /// Initialize our map that will store our inverter history analytics
   Map inverterHistoryAnalytics;
 
@@ -130,7 +128,6 @@ class _DashboardState extends State<Dashboard> {
               UserAccountsDrawerHeader(
                 accountName: Text(_displayName),
                 accountEmail: Text(_displayEmail),
-//                currentAccountPicture: const CircleAvatar(),
                 decoration: new BoxDecoration(color: Colors.blue),
               ),
               ListTile(
@@ -189,8 +186,7 @@ class _DashboardState extends State<Dashboard> {
                 title: Text('Connected Chargers'),
                 onTap: () {
                   var route = new MaterialPageRoute(
-                      builder: (BuildContext context) =>
-                          new ChargerInfo());
+                      builder: (BuildContext context) => new ChargerInfo());
                   Navigator.of(context).pop();
                   Navigator.of(context).push(route);
                 },
@@ -439,7 +435,6 @@ class _DashboardState extends State<Dashboard> {
     /// If the different in time between when the last back button was pressed and when
     /// the current button is pressed...
     if (now.difference(currentBackPressTime) > Duration(seconds: 3)) {
-
       /// Then we show a toast for the user to confirm that they want to exit the app
       currentBackPressTime = now;
       Fluttertoast.showToast(msg: 'Press back again to exit app');
@@ -887,89 +882,88 @@ class _ChargingSessionModalState extends State<ChargingSessionModal> {
     return stoppingCharging
         ? new Center(
             child: const Center(child: const CircularProgressIndicator()))
-        : new Container(
-            child: new ListView(
-              shrinkWrap: true,
-              padding: new EdgeInsets.only(
-                  top: 15,
-                  left: MediaQuery.of(context).size.width / 11,
-                  right: MediaQuery.of(context).size.width / 11),
-              children: <Widget>[
-                new Center(
-                    child: new AutoSizeText(
-                  '${widget.chargerID}: Live Charging Session',
-                  style: TextStyle(fontSize: 25.0),
-                  maxLines: 1,
-                )),
-                new Divider(),
-                new ListTile(
-                  title: const Text('Charging Started:',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  trailing: chargingStartTime != null
-                      ? Text('$chargingStartTime')
-                      : Text('loading...'),
-                ),
-                new ListTile(
-                  title: const Text('Duration:',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  trailing: chargingDuration != null
-                      ? Text('$chargingDuration')
-                      : Text('loading...'),
-                ),
-                new ListTile(
-                  title: const Text('Energy Consumed:',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  trailing: chargingEnergy != null
-                      ? Text('$chargingEnergy kWh')
-                      : Text('loading...'),
-                ),
-                new ListTile(
-                  title: const Text('Charging Power:',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  trailing: chargingPower != null
-                      ? Text('$chargingPower kW')
-                      : Text('loading...'),
-                ),
-                new ListTile(
-                  title: const Text('Charging Current:',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  trailing: chargingCurrent != null
-                      ? Text('$chargingCurrent A')
-                      : Text('loading...'),
-                ),
-                new Divider(),
-                new Row(
-                  children: <Widget>[
-                    new RaisedButton(
-                      child: new Text('Stop charging session'),
-                      onPressed: () {
-                        print('pressed');
-                        stopChargingSession();
-                      },
-                      color: Colors.redAccent,
-                    ),
-                    new RaisedButton(
-                      child: new Text('More info...'),
-                      onPressed: () {
-                        print('pressed');
-//                  Navigator.pop(context);
-                        var route = new MaterialPageRoute(
-                            builder: (BuildContext context) =>
-                                new ChargeSessionPage(
-                                  latestChargingTimestamp:
-                                      widget.latestChargingTimestamp,
-                                  database: widget.database,
-                                  chargerID: widget.chargerID,
-                                ));
-                        Navigator.of(context).push(route);
-                      },
-                    ),
-                  ],
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                )
-              ],
+        : new ListView(
+      physics: NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
+      padding: new EdgeInsets.only(
+          top: 15,
+          left: MediaQuery.of(context).size.width / 11,
+          right: MediaQuery.of(context).size.width / 11),
+      children: <Widget>[
+        new Center(
+            child: new AutoSizeText(
+              '${widget.chargerID}: Live Charging Session',
+              style: TextStyle(fontSize: 25.0),
+              maxLines: 1,
+            )),
+        new Divider(),
+        new ListTile(
+          title: const Text('Charging Started:',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          trailing: chargingStartTime != null
+              ? Text('$chargingStartTime')
+              : Text('loading...'),
+        ),
+        new ListTile(
+          title: const Text('Duration:',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          trailing: chargingDuration != null
+              ? Text('$chargingDuration')
+              : Text('loading...'),
+        ),
+        new ListTile(
+          title: const Text('Energy Consumed:',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          trailing: chargingEnergy != null
+              ? Text('$chargingEnergy kWh')
+              : Text('loading...'),
+        ),
+        new ListTile(
+          title: const Text('Charging Power:',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          trailing: chargingPower != null
+              ? Text('$chargingPower kW')
+              : Text('loading...'),
+        ),
+        new ListTile(
+          title: const Text('Charging Current:',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          trailing: chargingCurrent != null
+              ? Text('$chargingCurrent A')
+              : Text('loading...'),
+        ),
+        new Divider(),
+        new Row(
+          children: <Widget>[
+            new RaisedButton(
+              child: new Text('Stop charging session'),
+              onPressed: () {
+                print('pressed');
+                stopChargingSession();
+              },
+              color: Colors.redAccent,
             ),
-          );
+            new RaisedButton(
+              child: new Text('More info...'),
+              onPressed: () {
+                print('pressed');
+//                  Navigator.pop(context);
+                var route = new MaterialPageRoute(
+                    builder: (BuildContext context) =>
+                    new ChargeSessionPage(
+                      latestChargingTimestamp:
+                      widget.latestChargingTimestamp,
+                      database: widget.database,
+                      chargerID: widget.chargerID,
+                    ));
+                Navigator.of(context).push(route);
+              },
+            ),
+          ],
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        )
+      ],
+    );
   }
 
   stopChargingSession() async {
