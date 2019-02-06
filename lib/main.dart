@@ -117,7 +117,6 @@ class _LandingPageState extends State<LandingPage> {
               stream: FirebaseAuth.instance.onAuthStateChanged,
               builder:
                   (BuildContext context, AsyncSnapshot<FirebaseUser> snapshot) {
-//                print(snapshot);
                 switch (snapshot.connectionState) {
                   case ConnectionState.none:
                   case ConnectionState.waiting:

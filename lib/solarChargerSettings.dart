@@ -352,7 +352,6 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
   }
 
   void updateDSCFirmware(uid, currentVersion) {
-
     checkingForUpdates = true;
     setState(() {});
 
@@ -383,7 +382,7 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
     });
   }
 
-  checkForUpdates() async {
+  void checkForUpdates() async {
     /// This function checks for updates
 
     checkingForUpdates = true;
@@ -427,7 +426,7 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
     setState(() {});
   }
 
-  authenticationRequiredChanged(newAuthenticationRequirement) {
+  void authenticationRequiredChanged(newAuthenticationRequirement) {
     FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
       database
           .reference()
@@ -440,7 +439,7 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
     });
   }
 
-  bufferAggressivenessChanged(newBufferAggressiveness) {
+  void bufferAggressivenessChanged(newBufferAggressiveness) {
     FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
       database
           .reference()
@@ -453,7 +452,7 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
     });
   }
 
-  chargingModeChanged(newChargingMode) {
+  void chargingModeChanged(newChargingMode) {
     FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
       database
           .reference()
@@ -466,7 +465,7 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
     });
   }
 
-  getEVInputs(app) async {
+  void getEVInputs(app) async {
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
     String uid = user.uid;
 
@@ -512,7 +511,7 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
     setState(() {});
   }
 
-  getUserDetails() {
+  void getUserDetails() {
     FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
       setState(() {
         _displayName = user.displayName;
@@ -546,7 +545,10 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
     _singleChargingModeSubscription.cancel();
     _bufferAggroModeSubscription.cancel();
     _authenticationRequiredSubscription.cancel();
-    _versionSubscription.cancel();
+
+    if (_versionSubscription != null) {
+      _versionSubscription.cancel();
+    }
 
     print('disposed');
   }

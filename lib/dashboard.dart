@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:io' show Platform;
 import 'dart:io';
 import 'dart:async';
+import 'dart:math';
 
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -115,6 +116,10 @@ class _DashboardState extends State<Dashboard> {
 
   /// Initialize a ScrollController for the whole page
   ScrollController _scrollController = new ScrollController();
+
+  /// Initialize keys that will be used to refresh the page
+  ObjectKey solarGenerationKey;
+  ObjectKey dailyChargerBreakdownKey;
 
   @override
   Widget build(BuildContext context) {
@@ -392,8 +397,10 @@ class _DashboardState extends State<Dashboard> {
                                   title: numChargingSessionsActive,
                                   children: listOfChargingChargers),
                             ),
-                            new SolarGenerationHistoryCard(),
+                            new SolarGenerationHistoryCard(
+                                key: solarGenerationKey),
                             new DailyChargerBreakdownCard(
+                              key: dailyChargerBreakdownKey,
                               scrollController: _scrollController,
                             ),
                             new Text(
@@ -409,8 +416,19 @@ class _DashboardState extends State<Dashboard> {
         });
   }
 
+  int generateRandomInteger() {
+    var rnd = new Random();
+    var next = rnd.nextDouble() * 1000000;
+    while (next < 100000) {
+      next *= 10;
+    }
+    return next.toInt();
+  }
+
   Future<Null> _refresh() async {
     /// This function will refresh the page when the user swipes down
+
+    /// First cancel all our existing subscriptions
     _analyticsSubscription.cancel();
     _chargingSubscription.cancel();
     _historySubscription.cancel();
@@ -422,6 +440,13 @@ class _DashboardState extends State<Dashboard> {
     /// Grab our info for chargers that are currently charging
     /// Then grab our daily charger breakdown
     await grabChargingChargers();
+
+    /// Now change the key of so that our solar generation and daily charger
+    /// breakdown charts can be completely updated
+    setState(() {
+      solarGenerationKey = ObjectKey(generateRandomInteger());
+      dailyChargerBreakdownKey = ObjectKey(generateRandomInteger());
+    });
 
     return null;
   }
@@ -438,9 +463,6 @@ class _DashboardState extends State<Dashboard> {
       /// Then we show a toast for the user to confirm that they want to exit the app
       currentBackPressTime = now;
       Fluttertoast.showToast(msg: 'Press back again to exit app');
-
-      /// Vibrate the phone to get the user's attention
-      Vibration.vibrate(duration: 25);
 
       /// Prevent the back button from working
       return new Future(() => false);
@@ -514,26 +536,6 @@ class _DashboardState extends State<Dashboard> {
       });
       setState(() {});
     });
-  }
-
-  updateChargingCollapsible(tempListOfChargingChargers) {
-    if (tempListOfChargingChargers.length == 0) {
-      numChargingSessionsActive = Text("No Charging Sessions Active");
-      chargingSessionIcon = new Icon(Icons.battery_std);
-    } else if (tempListOfChargingChargers.length == 1) {
-      numChargingSessionsActive = Text("One Charging Session Active");
-      chargingSessionIcon = new Icon(Icons.battery_charging_full);
-    } else {
-      numChargingSessionsActive =
-          Text("${tempListOfChargingChargers.length} Charging Sessions Active");
-      chargingSessionIcon = new Icon(Icons.battery_charging_full);
-    }
-
-    if (this.mounted) {
-      setState(() {
-        listOfChargingChargers = tempListOfChargingChargers;
-      });
-    }
   }
 
   grabChargingChargers() async {
@@ -625,9 +627,6 @@ class _DashboardState extends State<Dashboard> {
           ));
         }
       }
-
-      print('fdghfd');
-      print(tempListOfChargingChargers);
 
       if (tempListOfChargingChargers.length == 0) {
         numChargingSessionsActive = Text("No Chargers Active");
@@ -883,87 +882,87 @@ class _ChargingSessionModalState extends State<ChargingSessionModal> {
         ? new Center(
             child: const Center(child: const CircularProgressIndicator()))
         : new ListView(
-      physics: NeverScrollableScrollPhysics(),
-      shrinkWrap: true,
-      padding: new EdgeInsets.only(
-          top: 15,
-          left: MediaQuery.of(context).size.width / 11,
-          right: MediaQuery.of(context).size.width / 11),
-      children: <Widget>[
-        new Center(
-            child: new AutoSizeText(
-              '${widget.chargerID}: Live Charging Session',
-              style: TextStyle(fontSize: 25.0),
-              maxLines: 1,
-            )),
-        new Divider(),
-        new ListTile(
-          title: const Text('Charging Started:',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          trailing: chargingStartTime != null
-              ? Text('$chargingStartTime')
-              : Text('loading...'),
-        ),
-        new ListTile(
-          title: const Text('Duration:',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          trailing: chargingDuration != null
-              ? Text('$chargingDuration')
-              : Text('loading...'),
-        ),
-        new ListTile(
-          title: const Text('Energy Consumed:',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          trailing: chargingEnergy != null
-              ? Text('$chargingEnergy kWh')
-              : Text('loading...'),
-        ),
-        new ListTile(
-          title: const Text('Charging Power:',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          trailing: chargingPower != null
-              ? Text('$chargingPower kW')
-              : Text('loading...'),
-        ),
-        new ListTile(
-          title: const Text('Charging Current:',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          trailing: chargingCurrent != null
-              ? Text('$chargingCurrent A')
-              : Text('loading...'),
-        ),
-        new Divider(),
-        new Row(
-          children: <Widget>[
-            new RaisedButton(
-              child: new Text('Stop charging session'),
-              onPressed: () {
-                print('pressed');
-                stopChargingSession();
-              },
-              color: Colors.redAccent,
-            ),
-            new RaisedButton(
-              child: new Text('More info...'),
-              onPressed: () {
-                print('pressed');
+            physics: NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            padding: new EdgeInsets.only(
+                top: 15,
+                left: MediaQuery.of(context).size.width / 11,
+                right: MediaQuery.of(context).size.width / 11),
+            children: <Widget>[
+              new Center(
+                  child: new AutoSizeText(
+                '${widget.chargerID}: Live Charging Session',
+                style: TextStyle(fontSize: 25.0),
+                maxLines: 1,
+              )),
+              new Divider(),
+              new ListTile(
+                title: const Text('Charging Started:',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                trailing: chargingStartTime != null
+                    ? Text('$chargingStartTime')
+                    : Text('loading...'),
+              ),
+              new ListTile(
+                title: const Text('Duration:',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                trailing: chargingDuration != null
+                    ? Text('$chargingDuration')
+                    : Text('loading...'),
+              ),
+              new ListTile(
+                title: const Text('Energy Consumed:',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                trailing: chargingEnergy != null
+                    ? Text('$chargingEnergy kWh')
+                    : Text('loading...'),
+              ),
+              new ListTile(
+                title: const Text('Charging Power:',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                trailing: chargingPower != null
+                    ? Text('$chargingPower kW')
+                    : Text('loading...'),
+              ),
+              new ListTile(
+                title: const Text('Charging Current:',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+                trailing: chargingCurrent != null
+                    ? Text('$chargingCurrent A')
+                    : Text('loading...'),
+              ),
+              new Divider(),
+              new Row(
+                children: <Widget>[
+                  new RaisedButton(
+                    child: new Text('Stop charging session'),
+                    onPressed: () {
+                      print('pressed');
+                      stopChargingSession();
+                    },
+                    color: Colors.redAccent,
+                  ),
+                  new RaisedButton(
+                    child: new Text('More info...'),
+                    onPressed: () {
+                      print('pressed');
 //                  Navigator.pop(context);
-                var route = new MaterialPageRoute(
-                    builder: (BuildContext context) =>
-                    new ChargeSessionPage(
-                      latestChargingTimestamp:
-                      widget.latestChargingTimestamp,
-                      database: widget.database,
-                      chargerID: widget.chargerID,
-                    ));
-                Navigator.of(context).push(route);
-              },
-            ),
-          ],
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        )
-      ],
-    );
+                      var route = new MaterialPageRoute(
+                          builder: (BuildContext context) =>
+                              new ChargeSessionPage(
+                                latestChargingTimestamp:
+                                    widget.latestChargingTimestamp,
+                                database: widget.database,
+                                chargerID: widget.chargerID,
+                              ));
+                      Navigator.of(context).push(route);
+                    },
+                  ),
+                ],
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              )
+            ],
+          );
   }
 
   stopChargingSession() async {
@@ -1079,7 +1078,6 @@ class _ChargingSessionModalState extends State<ChargingSessionModal> {
         .onValue
         .listen((Event event) {
       var latestPayload = event.snapshot.value;
-//      print(latestPayload);
 
       /// Find the amount of energy used currently
       chargingEnergy =
@@ -1153,6 +1151,8 @@ class _ChargingSessionModalState extends State<ChargingSessionModal> {
 }
 
 class SolarGenerationHistoryCard extends StatefulWidget {
+  SolarGenerationHistoryCard({Key key}) : super(key: key);
+
   @override
   _SolarGenerationHistoryCardState createState() =>
       _SolarGenerationHistoryCardState();
@@ -1160,19 +1160,15 @@ class SolarGenerationHistoryCard extends StatefulWidget {
 
 class _SolarGenerationHistoryCardState
     extends State<SolarGenerationHistoryCard> {
-  /// Define our loadingData flag
-  bool loadingData = true;
-
   var _headingFont = new TextStyle(fontSize: 20.0);
 
-  DatabaseReference _inverterHistoryAnalyticsRef;
+  List<charts.Series<AnalyticsData, DateTime>> solarGenerationSeriesList;
 
-  /// InverterHistoryAnalytics Map will be the Map that is dissected for
-  /// solar generation information
-  Map inverterHistoryAnalytics;
+  /// Initialize our inverter history analytics subscription
+  StreamSubscription _inverterHistoryAnalyticsSubscription;
 
   /// This is the date of the selected SolarGeneration bar
-  String selectedSolarGenerationDate = 'Click the chart to view the data';
+  String selectedSolarGenerationDate = '';
   String selectedSolarGenerationValue = '';
 
   @override
@@ -1189,28 +1185,23 @@ class _SolarGenerationHistoryCardState
         ))),
         new SizedBox(
           height: 200.0,
-          child: loadingData
+          child: solarGenerationSeriesList == null
               ? new Center(
                   child: const Center(child: const CircularProgressIndicator()))
               : new charts.TimeSeriesChart(
-                  _getSolarGenerationData(inverterHistoryAnalytics),
+                  solarGenerationSeriesList,
                   animate: true,
-//                          primaryMeasureAxis: new charts.NumericAxisSpec(
-//                            renderSpec: new charts.GridlineRendererSpec(
-//                              labelAnchor: charts.TickLabelAnchor.before
-//                            )
-//                          ),
                   defaultRenderer: new charts.BarRendererConfig<DateTime>(),
                   domainAxis:
                       new charts.DateTimeAxisSpec(usingBarRenderer: true),
-                  defaultInteractions: true,
+                  defaultInteractions: false,
                   behaviors: [
-                    new charts.SelectNearest(),
-                    new charts.DomainHighlighter(),
                     new charts.ChartTitle('Energy (kWh)',
                         behaviorPosition: charts.BehaviorPosition.start,
                         titleOutsideJustification:
-                            charts.OutsideJustification.middleDrawArea)
+                            charts.OutsideJustification.middleDrawArea),
+                    new charts.SelectNearest(),
+                    new charts.DomainHighlighter(),
                   ],
                   selectionModels: [
                     new charts.SelectionModelConfig(
@@ -1221,9 +1212,15 @@ class _SolarGenerationHistoryCardState
                 ),
         ),
         new ListTile(
-            title: new Text(
-              selectedSolarGenerationDate,
-            ),
+            title: selectedSolarGenerationDate == ''
+                ? new Text(
+                    'Click the chart to view the data',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  )
+                : new Text(
+                    selectedSolarGenerationDate,
+                  ),
             trailing: new Text(selectedSolarGenerationValue,
                 style: TextStyle(fontWeight: FontWeight.bold))),
       ],
@@ -1257,8 +1254,7 @@ class _SolarGenerationHistoryCardState
     }
   }
 
-  List<charts.Series<AnalyticsData, DateTime>> _getSolarGenerationData(
-      inverterHistoryAnalytics) {
+  void _getSolarGenerationChartList(inverterHistoryAnalytics) {
     /// This function will take our inverter history analytics and extract
     /// solar generation data from it
 
@@ -1278,7 +1274,7 @@ class _SolarGenerationHistoryCardState
     }
 
     /// Now return the series object
-    return [
+    solarGenerationSeriesList = [
       new charts.Series(
           id: 'Solar Generation History',
           colorFn: (_, __) => charts.MaterialPalette.yellow.shadeDefault,
@@ -1286,29 +1282,28 @@ class _SolarGenerationHistoryCardState
           domainFn: (AnalyticsData sales, _) => sales.date,
           measureFn: (AnalyticsData sales, _) => sales.analyticValue)
     ];
+    setState(() {});
   }
 
-  Future<Null> grabInverterHistoryAnalytics(app) async {
+  void grabInverterHistoryAnalytics(app) async {
     /// This function will grab all of our inverter history analytics
 
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
     final FirebaseDatabase database = new FirebaseDatabase(app: app);
     String uid = user.uid;
 
-    _inverterHistoryAnalyticsRef = database
+    /// First start a listener for any changes in inverter history analytics
+    /// Whenever the day changes the graph will automatically update
+    _inverterHistoryAnalyticsSubscription = database
         .reference()
-        .child('users/$uid/analytics/inverter_history_analytics');
-
-    _inverterHistoryAnalyticsRef
+        .child('users/$uid/analytics/inverter_history_analytics')
         .limitToLast(15)
-        .once()
-        .then((DataSnapshot snapshot) {
-      setState(() {
-        inverterHistoryAnalytics = snapshot.value;
+        .onValue
+        .listen((Event event) {
+      Map inverterHistoryAnalytics = event.snapshot.value;
 
-        /// Now we can take away the loading data flag
-        loadingData = false;
-      });
+      /// Get our chart object from our inverterHistoryAnalytics Map
+      _getSolarGenerationChartList(inverterHistoryAnalytics);
     });
   }
 
@@ -1319,6 +1314,12 @@ class _SolarGenerationHistoryCardState
     main().then((FirebaseApp app) {
       grabInverterHistoryAnalytics(app);
     });
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _inverterHistoryAnalyticsSubscription.cancel();
   }
 }
 
@@ -1344,7 +1345,7 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
 
   Map<String, String> selectedDailyChargerBreakdownData = {};
 
-  String selectedDailyChargerBreakdownDate = '';
+  String selectedDailyChargerBreakdownDate = 'Click the chart to view the data';
   String selectedDailyChargerBreakdownValue = '';
 
   /// Initialize our mapOfDataArrays
@@ -1373,12 +1374,10 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
                   dailyChargerBreakdownSeriesList,
                   animate: true,
                   defaultRenderer: new charts.BarRendererConfig<DateTime>(
-
-                      // Todo: we still need to figure out the groupingtype
                       groupingType: charts.BarGroupingType.stacked),
                   domainAxis:
                       new charts.DateTimeAxisSpec(usingBarRenderer: true),
-                  defaultInteractions: true,
+                  defaultInteractions: false,
                   behaviors: [
                     new charts.SeriesLegend(
                       position: charts.BehaviorPosition.top,
@@ -1387,7 +1386,9 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
                     new charts.ChartTitle('Energy (kWh)',
                         behaviorPosition: charts.BehaviorPosition.start,
                         titleOutsideJustification:
-                            charts.OutsideJustification.middleDrawArea)
+                            charts.OutsideJustification.middleDrawArea),
+                    new charts.SelectNearest(),
+                    new charts.DomainHighlighter(),
                   ],
                   selectionModels: [
                     new charts.SelectionModelConfig(
@@ -1453,21 +1454,23 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
 
       /// Now loop through all of the values
       selectedDatum.forEach((charts.SeriesDatum datumPair) {
-        selectedDailyChargerBreakdownValue =
-            datumPair.datum.analyticValue.toStringAsFixed(2) + 'kWh';
+        /// If the value in the selected bar is not null, then we create the
+        /// string value to display
+        if (datumPair.datum.analyticValue != null) {
+          selectedDailyChargerBreakdownValue =
+              datumPair.datum.analyticValue.toStringAsFixed(2) + 'kWh';
+        }
       });
 
       /// Now create our final selectedDate string
       var formatter = new DateFormat('MMMMEEEEd');
 
+      /// Update our selected date
       selectedDailyChargerBreakdownDate = '${formatter.format(date)}';
 
       setState(() {
-        /// Once we have clicked on the bar chart, we need to scroll down to the bottom after the widget updates
-//        Timer(
-//            Duration(milliseconds: 200),
-//            () => widget.scrollController
-//                .jumpTo(widget.scrollController.position.maxScrollExtent));
+        /// Once we have clicked on the bar chart, we need to scroll down to the
+        /// bottom AFTER the widget updates
         Timer(
             Duration(milliseconds: 100),
             () => widget.scrollController.animateTo(
@@ -1481,8 +1484,6 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
   Future<Null> grabDailyChargerBreakdown(app) async {
     /// This function grabs all of the data needed to draw the daily charger
     /// breakdown bar chart
-
-    print('grabbing daily charger breakdown');
 
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
     final FirebaseDatabase database = new FirebaseDatabase(app: app);
@@ -1504,24 +1505,26 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
     if (this.mounted) {
       setState(() {
         dailyChargerBreakdownSeriesList = seriesArray;
-        print(dailyChargerBreakdownSeriesList);
       });
     }
   }
 
   Future grabChargerAnalyticsValues(user, database, evChargers, numDays) async {
+    /// This function takes in the list of evChargers, grabs all of the
+    /// charging analytics information for them and puts them into chart Series
+    /// ready to be charted
+
     String uid = user.uid;
 
     /// Initialize a dateFormatter
     var dateFormatter = new DateFormat('yyyy-MM-dd');
 
-    /// Initialize our mapOfDataArrays
+    /// Initialize our mapOfDataArrays.
+    /// mapOfDataArrays will have key: charger ID and value as data array
     mapOfDataArrays = {};
 
     /// Loop through all of our EV Chargers
     for (String chargerID in evChargers) {
-      mapOfDataArrays[chargerID] = [];
-
       /// Download charging history analytics for this EV Charger
       DataSnapshot tempSnapshot = await database
           .reference()
@@ -1530,35 +1533,46 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
           .once();
       var tempData = tempSnapshot.value;
 
-      for (var i = numDays; i >= 0; i--) {
-        DateTime dateObject =
-            new DateTime.now().subtract(new Duration(days: i));
-        String dateString = dateFormatter.format(dateObject);
+      if (tempData != null) {
+        /// Initialize the charger ID's data array
+        mapOfDataArrays[chargerID] = [];
 
-        /// Check if for this day we have data for this chargerID
-        if (tempData != null && tempData.containsKey(dateString)) {
-          /// If we do, then we should loop through the object
-          /// and add up the energy
-          num tempChargeEnergy = 0;
-          tempData[dateString].forEach((chargeTime, value) {
-            tempChargeEnergy += value['energy'];
-          });
-          mapOfDataArrays[chargerID]
-              .add(new AnalyticsData(dateObject, tempChargeEnergy));
-        }
+        /// Now loop back from numDays to 0
+        for (var i = numDays; i >= 0; i--) {
+          /// Get the DateTime object of today subtracted by i days
+          final now = DateTime.now();
+          DateTime dateObject = new DateTime(now.year, now.month, now.day)
+              .subtract(new Duration(days: i));
 
-        /// If we don't have data for this chargerID on this day, we add null
-        else {
-          mapOfDataArrays[chargerID].add(new AnalyticsData(dateObject, null));
+          /// Now format the DateTime object as a string
+          String dateString = dateFormatter.format(dateObject);
+
+          /// Check if for this day we have data for this chargerID
+          if (tempData != null && tempData.containsKey(dateString)) {
+            /// If we do, then we should loop through the object
+            /// and add up the energy
+            num tempChargeEnergy = 0;
+            tempData[dateString].forEach((chargeTime, value) {
+              tempChargeEnergy += value['energy'];
+            });
+
+            mapOfDataArrays[chargerID]
+                .add(new AnalyticsData(dateObject, tempChargeEnergy));
+          }
+
+          /// If we don't have data for this chargerID on this day, we add null
+          else {
+            mapOfDataArrays[chargerID].add(new AnalyticsData(dateObject, null));
+          }
         }
       }
     }
 
     /// Once we have our map of data arrays, we can turn them into chart series
-    List<charts.Series<AnalyticsData, DateTime>> seriesArray = [];
+    List<charts.Series<AnalyticsData, DateTime>> seriesList = [];
 
     mapOfDataArrays.forEach((chargerID, dataArray) {
-      seriesArray.add(new charts.Series<AnalyticsData, DateTime>(
+      seriesList.add(new charts.Series<AnalyticsData, DateTime>(
         id: chargerID,
         domainFn: (AnalyticsData sales, _) => sales.date,
         measureFn: (AnalyticsData sales, _) => sales.analyticValue,
@@ -1566,7 +1580,7 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
       ));
     });
 
-    return seriesArray;
+    return seriesList;
   }
 
   startListeningToChargingStatus(app) async {
@@ -1574,6 +1588,7 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
     final FirebaseDatabase database = new FirebaseDatabase(app: app);
     String uid = user.uid;
 
+    /// Start a listener for changes in charging status of our chargers
     _chargingRef = database.reference().child('users/$uid/evc_inputs/charging');
     _chargingSubscription = _chargingRef.onValue.listen((Event event) async {
       grabDailyChargerBreakdown(app);

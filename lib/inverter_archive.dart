@@ -204,7 +204,6 @@ class _InverterArchiveState extends State<InverterArchive> {
     List sortedValidDate = validDates
       ..sort((date1, date2) => date1.compareTo(date2));
 
-    // TOdo: make this work
     /// If a date has already been picked - then we need to dispose of the
     /// previous widgets
     if (pickedDate != null) {
