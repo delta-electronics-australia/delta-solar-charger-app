@@ -253,6 +253,15 @@ class _SelectConnectionPageState extends State<SelectConnectionPage> {
 
   String selectedConnectionMethod;
 
+  /// _nameController is the TextEditingController for setting the nickname of the system
+  final TextEditingController _nameController = new TextEditingController();
+
+  /// _nameButtonDisabled is the boolean to see if the submit name button
+  /// should be enabled
+  bool _nextButtonDisabled = true;
+
+  String get name => _nameController.text;
+
   @override
   Widget build(BuildContext context) {
     return new Scaffold(
@@ -278,6 +287,7 @@ class _SelectConnectionPageState extends State<SelectConnectionPage> {
                   title: new Text('None - Run in offline mode'),
                   onTap: () {
                     selectedConnectionMethod = 'none';
+                    _nextButtonDisabled = false;
                     setState(() {});
                   },
                 )),
@@ -293,6 +303,7 @@ class _SelectConnectionPageState extends State<SelectConnectionPage> {
                   title: new Text('Ethernet'),
                   onTap: () {
                     selectedConnectionMethod = 'ethernet';
+                    _nextButtonDisabled = false;
                     setState(() {});
                   },
                 )),
@@ -308,6 +319,7 @@ class _SelectConnectionPageState extends State<SelectConnectionPage> {
                     title: new Text('Wi-Fi'),
                     onTap: () {
                       selectedConnectionMethod = 'wifi';
+                      _nextButtonDisabled = false;
                       setState(() {});
                     })),
             new Card(
@@ -322,10 +334,39 @@ class _SelectConnectionPageState extends State<SelectConnectionPage> {
                     title: new Text('3G/4G'),
                     onTap: () {
                       selectedConnectionMethod = '3G';
+                      _nextButtonDisabled = false;
                       setState(() {});
                     })),
+            new Divider(),
+            new Text(
+              'System Name',
+              style: _headingFont,
+              textAlign: TextAlign.center,
+            ),
+            Padding(
+              padding: const EdgeInsets.only(top: 5.0),
+              child: new Text(
+                'Please enter name that will be used to identify the system',
+                style: null,
+                textAlign: TextAlign.center,
+              ),
+            ),
+            new ListTile(
+                title: new TextField(
+              controller: _nameController,
+              decoration:
+                  new InputDecoration(hintText: "Enter a new system name"),
+              onChanged: (text) {
+                if (text == "") {
+                  _nextButtonDisabled = true;
+                } else {
+                  _nextButtonDisabled = false;
+                }
+                setState(() {});
+              },
+            )),
             new RaisedButton(
-              onPressed: connectionSelected,
+              onPressed: _nextButtonDisabled ? null : connectionSelected,
               child: const Text('Next'),
             )
           ],

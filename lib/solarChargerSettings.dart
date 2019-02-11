@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dart:io' show Platform;
-import 'dart:io';
 import 'dart:async';
 
 import 'package:firebase_database/firebase_database.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:smart_charging_app/authenticate.dart';
@@ -13,6 +10,7 @@ import 'package:smart_charging_app/charging_archive.dart';
 import 'package:smart_charging_app/inverter_archive.dart';
 import 'package:smart_charging_app/charger_info.dart';
 
+import 'package:fluttertoast/fluttertoast.dart';
 
 class SolarChargerSettings extends StatefulWidget {
   @override
@@ -26,7 +24,7 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
   String _displayName = "";
   String _displayEmail = "";
 
-  final _headingFont = const TextStyle(fontSize: 25.0);
+  final _headingFont = const TextStyle(fontSize: 22.0);
   Map<String, String> chargingModeOptions = {
     'Standalone: PV with Battery Backup': 'PV_with_BT',
     'Standalone: Maximise EV Charge Rate': 'MAX_CHARGE_STANDALONE',
@@ -55,7 +53,19 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
 
   bool checkingForUpdates = false;
 
+  /// firmwareWidget is the widget that will show up in the firmware updates card
   Widget firmwareWidget;
+
+  /// _nameController is the TextEditingController for setting the nickname of the system
+  final TextEditingController _nameController = new TextEditingController();
+
+  /// _nameButtonDisabled is the boolean to see if the submit name button
+  /// should be enabled
+  bool _nameButtonDisabled = true;
+
+  String currentSystemName;
+
+  String get name => _nameController.text;
 
   @override
   Widget build(BuildContext context) {
@@ -143,16 +153,6 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
             Navigator.of(context).push(route);
           },
         ),
-//              ListTile(
-//                title: Text('Change Delta Smart Box Settings'),
-//                onTap: () {
-//                  print('moving to setings');
-//                  var route = new MaterialPageRoute(
-//                      builder: (BuildContext context) => new ChangeSettings());
-//                  Navigator.of(context).pop();
-//                  Navigator.of(context).push(route);
-//                },
-//              ),
         Divider(),
         ListTile(
           title: Text('Sign Out'),
@@ -162,9 +162,8 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
       body: new Center(
           child: new ListView(
         children: <Widget>[
-//          new Padding(padding: const EdgeInsets.only(top: 15))
           Padding(
-            padding: const EdgeInsets.all(6.0),
+            padding: const EdgeInsets.all(3.0),
             child: new Card(
                 child: Padding(
               padding: const EdgeInsets.all(8.0),
@@ -196,7 +195,7 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
             )),
           ),
           Padding(
-            padding: const EdgeInsets.all(6.0),
+            padding: const EdgeInsets.all(3.0),
             child: new Card(
                 child: Padding(
               padding: const EdgeInsets.all(8.0),
@@ -233,7 +232,7 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
             )),
           ),
           Padding(
-            padding: const EdgeInsets.all(6.0),
+            padding: const EdgeInsets.all(3.0),
             child: new Card(
                 child: Padding(
               padding: const EdgeInsets.all(8.0),
@@ -267,9 +266,61 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
                           child: const CircularProgressIndicator())),
             )),
           ),
+          new Padding(
+            padding: const EdgeInsets.all(3.0),
+            child: new Card(
+                child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: new Column(
+                children: <Widget>[
+                  new Text(
+                    'System Name',
+                    style: _headingFont,
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 5.0),
+                    child: new Text(
+                      'This name will be used to identify the system',
+                      style: null,
+                    ),
+                  ),
+                  Padding(
+                    key: new ObjectKey('systemName'),
+                    padding: const EdgeInsets.only(top: 5.0),
+                    child: new Text(
+                      'The current system name is: $currentSystemName',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  new ListTile(
+                      title: new TextField(
+                    controller: _nameController,
+                    decoration: new InputDecoration(
+                        hintText: "Enter a new system name"),
+                    onChanged: (text) {
+                      if (text == "") {
+                        _nameButtonDisabled = true;
+                      } else {
+                        _nameButtonDisabled = false;
+                      }
+                      setState(() {});
+                    },
+                  )),
+                  new RaisedButton(
+                    onPressed: _nameButtonDisabled
+                        ? null
+                        : () {
+                            _submitNameButtonPressed();
+                          },
+                    child: const Text('Submit new name'),
+                  )
+                ],
+              ),
+            )),
+          ),
           new Divider(color: Colors.black),
           new Padding(
-            padding: const EdgeInsets.all(6.0),
+            padding: const EdgeInsets.all(3.0),
             child: new Card(
                 child: Padding(
               padding: const EdgeInsets.all(8.0),
@@ -295,7 +346,7 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
             )),
           ),
           new Padding(
-            padding: const EdgeInsets.all(6.0),
+            padding: const EdgeInsets.all(3.0),
             child: new Card(
                 child: Padding(
               padding: const EdgeInsets.all(8.0),
@@ -409,6 +460,44 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
     setState(() {});
   }
 
+  void _submitNameButtonPressed() async {
+    FirebaseUser user = await FirebaseAuth.instance.currentUser();
+
+    database
+        .reference()
+        .child('users')
+        .child(user.uid)
+        .child('user_info')
+        .update({'nickname': name});
+
+    _nameController.clear();
+    Fluttertoast.showToast(msg: 'System name changed!');
+  }
+
+  void getCurrentSystemName() async {
+    FirebaseUser user = await FirebaseAuth.instance.currentUser();
+
+    database
+        .reference()
+        .child('users')
+        .child(user.uid)
+        .child('user_info')
+        .child('nickname')
+        .onValue
+        .listen((Event event) {
+          /// Todo: needs work
+      DataSnapshot currentSystemNameSnapshot = event.snapshot;
+      if (currentSystemNameSnapshot.value == null) {
+        currentSystemName = 'No name currently set!';
+      } else {
+        print(currentSystemNameSnapshot.value);
+        currentSystemName = currentSystemNameSnapshot.value;
+      }
+
+      setState(() {});
+    });
+  }
+
   void authenticationRequiredChanged(newAuthenticationRequirement) {
     FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
       database
@@ -517,7 +606,7 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
     getUserDetails();
     database = new FirebaseDatabase();
     getEVInputs();
-
+    getCurrentSystemName();
   }
 
   @override
@@ -664,5 +753,4 @@ class _FactoryResetState extends State<FactoryReset> {
     Navigator.of(context)
         .pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
   }
-
 }

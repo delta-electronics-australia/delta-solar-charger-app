@@ -20,6 +20,23 @@ import 'package:intl/intl.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
+Future<FirebaseApp> main() async {
+  final FirebaseApp app = await FirebaseApp.configure(
+    name: 'smart-charging-app',
+    options: Platform.isIOS
+        ? const FirebaseOptions(
+            googleAppID: '1:297855924061:ios:c6de2b69b03a5be8',
+            gcmSenderID: '297855924061',
+            databaseURL: 'https://smart-charging-app.firebaseio.com/',
+          )
+        : const FirebaseOptions(
+            googleAppID: '1:896921007938:android:2be6175bd778747f',
+            apiKey: 'AIzaSyCaxTOBofd7qrnbas5gGsZcuvy_zNSi_ik',
+            databaseURL: 'https://smart-charging-app.firebaseio.com/',
+          ),
+  );
+  return app;
+}
 
 class Dashboard extends StatefulWidget {
   @override
@@ -463,7 +480,6 @@ class _DashboardState extends State<Dashboard> {
   }
 
   Future<Null> grabSolarGenerationHistory() async {
-
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
     print(user);
     final FirebaseDatabase database = new FirebaseDatabase();
@@ -572,9 +588,9 @@ class _DashboardState extends State<Dashboard> {
 
           /// Now add a new widget that takes care of the trailing energy
           var tempTrailingEnergy = new TrailingEnergyUsed(
-              chargerID: chargerID,
-              latestChargingTimestamp: latestChargingTimestamp,
-              );
+            chargerID: chargerID,
+            latestChargingTimestamp: latestChargingTimestamp,
+          );
           listOfTrailingEnergy.add(tempTrailingEnergy);
 
           /// Now add a list tile representing that chargerID
@@ -647,6 +663,7 @@ class _DashboardState extends State<Dashboard> {
   @override
   void initState() {
     super.initState();
+
     /// This gets values for our Nav email/name
     getUserDetails();
 
@@ -1575,7 +1592,6 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
   void initState() {
     super.initState();
     startListeningToChargingStatus();
-
   }
 
   @override
