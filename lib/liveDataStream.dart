@@ -13,24 +13,6 @@ import 'package:charts_flutter/flutter.dart' as charts;
 import 'package:intl/intl.dart';
 import 'dart:collection';
 
-Future<FirebaseApp> main() async {
-  final FirebaseApp app = await FirebaseApp.configure(
-    name: 'smart-charging-app',
-    options: Platform.isIOS
-        ? const FirebaseOptions(
-            googleAppID: '1:297855924061:ios:c6de2b69b03a5be8',
-            gcmSenderID: '297855924061',
-            databaseURL: 'https://smart-charging-app.firebaseio.com/',
-          )
-        : const FirebaseOptions(
-            googleAppID: '1:896921007938:android:2be6175bd778747f',
-            apiKey: 'AIzaSyCaxTOBofd7qrnbas5gGsZcuvy_zNSi_ik',
-            databaseURL: 'https://smart-charging-app.firebaseio.com/',
-          ),
-  );
-  return app;
-}
-
 class DataStreamPage1 extends StatefulWidget {
   @override
   _DataStreamPage1State createState() => new _DataStreamPage1State();
@@ -173,7 +155,7 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
         .pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
   }
 
-  startInverterChartsListeners(app) async {
+  startInverterChartsListeners() async {
     int maxArrayLength = 60;
 
     /// Initialize our date formatter
@@ -236,9 +218,9 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
     });
   }
 
-  Future initializeInverterCharts(app) async {
+  Future initializeInverterCharts() async {
     /// First grab our raw inverter history data
-    Map historyPayload = await grabInitialHistoryData(app);
+    Map historyPayload = await grabInitialHistoryData();
 
     /// This function makes all of the raw data into a single Map
     historyChartsDataObject = _getHistoryChartsArrays(historyPayload);
@@ -297,9 +279,9 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
     return liveSystemDataWidget;
   }
 
-  Future<Map> grabInitialHistoryData(app) async {
+  Future<Map> grabInitialHistoryData() async {
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase(app: app);
+    final FirebaseDatabase database = new FirebaseDatabase();
     String uid = user.uid;
 
     var dateFormatter = new DateFormat('yyyy-MM-dd');
@@ -398,13 +380,12 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
   @override
   void initState() {
     super.initState();
-    main().then((FirebaseApp app) {
-      /// This gets values for our Nav email/name
-      getUserDetails();
 
-      initializeInverterCharts(app).then((dynamic _) {
-        startInverterChartsListeners(app);
-      });
+    /// This gets values for our Nav email/name
+    getUserDetails();
+
+    initializeInverterCharts().then((dynamic _) {
+      startInverterChartsListeners();
     });
   }
 

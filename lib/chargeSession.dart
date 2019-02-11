@@ -9,24 +9,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:charts_flutter/flutter.dart' as charts;
 import 'package:intl/intl.dart';
 
-Future<FirebaseApp> main() async {
-  final FirebaseApp app = await FirebaseApp.configure(
-    name: 'smart-charging-app',
-    options: Platform.isIOS
-        ? const FirebaseOptions(
-            googleAppID: '1:297855924061:ios:c6de2b69b03a5be8',
-            gcmSenderID: '297855924061',
-            databaseURL: 'https://smart-charging-app.firebaseio.com/',
-          )
-        : const FirebaseOptions(
-            googleAppID: '1:896921007938:android:2be6175bd778747f',
-            apiKey: 'AIzaSyCaxTOBofd7qrnbas5gGsZcuvy_zNSi_ik',
-            databaseURL: 'https://smart-charging-app.firebaseio.com/',
-          ),
-  );
-  return app;
-}
-
 class ChargeSessionPage extends StatefulWidget {
   ChargeSessionPage(
       {Key key,
@@ -215,7 +197,7 @@ class _ChargeSessionLineState extends State<ChargeSessionLine> {
   }
 
   /// This function charts listeners for the charging line chart
-  startChargeSessionListener(app) async {
+  startChargeSessionListener() async {
     /// Start a history data stream
     _chargingSessionSubscription = _chargingSessionRef
         .orderByKey()
@@ -261,9 +243,9 @@ class _ChargeSessionLineState extends State<ChargeSessionLine> {
     });
   }
 
-  Future initializeChargingSessionCharts(app) async {
+  Future initializeChargingSessionCharts() async {
     /// First grab our raw inverter history data
-    Map chargeSessionPayload = await grabInitialChargeSessionData(app);
+    Map chargeSessionPayload = await grabInitialChargeSessionData();
 
     /// This function makes all of the raw data into a single Map
     chargeSessionChartDataObject =
@@ -314,9 +296,9 @@ class _ChargeSessionLineState extends State<ChargeSessionLine> {
   }
 
   /// This function grabs our current charge session data
-  Future<Map> grabInitialChargeSessionData(app) async {
+  Future<Map> grabInitialChargeSessionData() async {
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase(app: app);
+    final FirebaseDatabase database = new FirebaseDatabase();
     String uid = user.uid;
 
     _chargingSessionRef = database.reference().child(
@@ -395,10 +377,8 @@ class _ChargeSessionLineState extends State<ChargeSessionLine> {
   @override
   void initState() {
     super.initState();
-    main().then((FirebaseApp app) {
-      initializeChargingSessionCharts(app).then((dynamic _) {
-        startChargeSessionListener(app);
-      });
+    initializeChargingSessionCharts().then((dynamic _) {
+      startChargeSessionListener();
     });
   }
 

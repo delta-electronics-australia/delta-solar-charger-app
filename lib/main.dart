@@ -6,6 +6,7 @@ import 'package:smart_charging_app/dashboard.dart';
 import 'package:smart_charging_app/initial_setup.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+
 void main() => runApp(new MyApp());
 
 class MyApp extends StatelessWidget {
@@ -57,8 +58,8 @@ class _LandingPageState extends State<LandingPage> {
   Future<Null> _signOut() async {
     await FirebaseAuth.instance.signOut();
     print('Signed out');
-//    setState(() {});
   }
+
 
   void _handleLogin() {
     // Set loggingIn to true, so we have a circular progress icon
@@ -71,10 +72,11 @@ class _LandingPageState extends State<LandingPage> {
 //    user.email = 'jgv115@gmail.com';
 //    user.password = 'test123';
 
-    userAuth.verifyUser(user).then((onValue) {
+    userAuth.verifyUser(user).then((onValue) async {
       print(onValue);
       if (onValue == "Login Successful") {
         loggingIn = false;
+
         Navigator.pushNamed(context, "/Dashboard");
       } else {
         showDialog(

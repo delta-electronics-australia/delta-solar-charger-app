@@ -13,23 +13,6 @@ import 'package:smart_charging_app/charging_archive.dart';
 import 'package:smart_charging_app/inverter_archive.dart';
 import 'package:smart_charging_app/charger_info.dart';
 
-Future<FirebaseApp> main() async {
-  final FirebaseApp app = await FirebaseApp.configure(
-    name: 'smart-charging-app',
-    options: Platform.isIOS
-        ? const FirebaseOptions(
-            googleAppID: '1:297855924061:ios:c6de2b69b03a5be8',
-            gcmSenderID: '297855924061',
-            databaseURL: 'https://smart-charging-app.firebaseio.com/',
-          )
-        : const FirebaseOptions(
-            googleAppID: '1:896921007938:android:2be6175bd778747f',
-            apiKey: 'AIzaSyCaxTOBofd7qrnbas5gGsZcuvy_zNSi_ik',
-            databaseURL: 'https://smart-charging-app.firebaseio.com/',
-          ),
-  );
-  return app;
-}
 
 class SolarChargerSettings extends StatefulWidget {
   @override
@@ -465,7 +448,7 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
     });
   }
 
-  void getEVInputs(app) async {
+  void getEVInputs() async {
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
     String uid = user.uid;
 
@@ -532,11 +515,9 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
     super.initState();
 
     getUserDetails();
+    database = new FirebaseDatabase();
+    getEVInputs();
 
-    main().then((FirebaseApp app) {
-      database = new FirebaseDatabase(app: app);
-      getEVInputs(app);
-    });
   }
 
   @override
@@ -571,8 +552,6 @@ class _FactoryResetState extends State<FactoryReset> {
   String get email => _email.text;
 
   String get password => _pass.text;
-
-  FirebaseApp app;
 
   @override
   Widget build(BuildContext context) {
@@ -668,7 +647,7 @@ class _FactoryResetState extends State<FactoryReset> {
 
   void _performFactoryReset() async {
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase(app: app);
+    final FirebaseDatabase database = new FirebaseDatabase();
     String uid = user.uid;
 
     database
@@ -686,11 +665,4 @@ class _FactoryResetState extends State<FactoryReset> {
         .pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
   }
 
-  @override
-  void initState() {
-    super.initState();
-    main().then((FirebaseApp firebaseApp) {
-      app = firebaseApp;
-    });
-  }
 }

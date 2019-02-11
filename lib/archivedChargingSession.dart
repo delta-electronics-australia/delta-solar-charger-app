@@ -200,7 +200,7 @@ class _ChargeSessionLineState extends State<ChargeSessionLine> {
     setState(() {});
   }
 
-  Future initializeChargingSessionCharts(app) async {
+  Future initializeChargingSessionCharts() async {
     /// This function makes all of the raw data into a single Map
     chargeSessionChartDataObject = await _getChargingSessionArrays();
 
@@ -347,9 +347,7 @@ class _ChargeSessionLineState extends State<ChargeSessionLine> {
   @override
   void initState() {
     super.initState();
-    main().then((FirebaseApp app) {
-      initializeChargingSessionCharts(app);
-    });
+    initializeChargingSessionCharts();
   }
 
   @override

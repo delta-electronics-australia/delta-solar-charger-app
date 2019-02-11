@@ -12,27 +12,8 @@ import 'package:smart_charging_app/solarChargerSettings.dart';
 import 'package:smart_charging_app/liveDataStream.dart';
 import 'package:smart_charging_app/charger_info.dart';
 
-
 import 'package:charts_flutter/flutter.dart' as charts;
 import 'package:intl/intl.dart';
-
-Future<FirebaseApp> main() async {
-  final FirebaseApp app = await FirebaseApp.configure(
-    name: 'smart-charging-app',
-    options: Platform.isIOS
-        ? const FirebaseOptions(
-            googleAppID: '1:297855924061:ios:c6de2b69b03a5be8',
-            gcmSenderID: '297855924061',
-            databaseURL: 'https://smart-charging-app.firebaseio.com/',
-          )
-        : const FirebaseOptions(
-            googleAppID: '1:896921007938:android:2be6175bd778747f',
-            apiKey: 'AIzaSyCaxTOBofd7qrnbas5gGsZcuvy_zNSi_ik',
-            databaseURL: 'https://smart-charging-app.firebaseio.com/',
-          ),
-  );
-  return app;
-}
 
 class ChargingArchive extends StatefulWidget {
   @override
@@ -132,11 +113,9 @@ class _ChargingArchiveState extends State<ChargingArchive> {
             title: Text('Connected Chargers'),
             onTap: () {
               var route = new MaterialPageRoute(
-                  builder: (BuildContext context) =>
-                  new ChargerInfo());
+                  builder: (BuildContext context) => new ChargerInfo());
               Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
               Navigator.of(context).push(route);
-
             },
           ),
 
@@ -267,18 +246,20 @@ class _ChargingArchiveState extends State<ChargingArchive> {
     });
   }
 
+  void startChargingArchive() async {
+    getUserDetails();
+    database = new FirebaseDatabase();
+    FirebaseUser user = await FirebaseAuth.instance.currentUser();
+    uid = user.uid;
+
+    validDatesPayload = await getValidChargingDates();
+    setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
-    main().then((FirebaseApp app) async {
-      getUserDetails();
-      database = new FirebaseDatabase(app: app);
-      FirebaseUser user = await FirebaseAuth.instance.currentUser();
-      uid = user.uid;
-
-      validDatesPayload = await getValidChargingDates();
-      setState(() {});
-    });
+    startChargingArchive();
   }
 }
 

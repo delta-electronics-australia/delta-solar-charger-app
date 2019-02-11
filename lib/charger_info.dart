@@ -38,7 +38,6 @@ class ChargerInfo extends StatefulWidget {
 }
 
 class _ChargerInfoState extends State<ChargerInfo> {
-  FirebaseApp app;
   List evChargerList = [];
 
   /// Initialize the strings that will define our display name and email
@@ -156,8 +155,8 @@ class _ChargerInfoState extends State<ChargerInfo> {
       /// Now add the our custom ChargerCard widget into the chargerCardList
       /// Note that we are using an ObjectKey so Flutter knows which charger ID
       /// has been added or removed.
-      chargerCardList.add(new ChargerCard(
-          key: new ObjectKey(chargerID), chargerID: chargerID, app: app));
+      chargerCardList.add(
+          new ChargerCard(key: new ObjectKey(chargerID), chargerID: chargerID));
     }
 
     return chargerCardList;
@@ -169,7 +168,7 @@ class _ChargerInfoState extends State<ChargerInfo> {
     /// has changed
 
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase(app: app);
+    final FirebaseDatabase database = new FirebaseDatabase();
     String uid = user.uid;
 
     /// We listen for any changes in the ev chargers node
@@ -206,11 +205,7 @@ class _ChargerInfoState extends State<ChargerInfo> {
     super.initState();
 
     getUserDetails();
-
-    main().then((FirebaseApp firebaseApp) {
-      app = firebaseApp;
-      grabConnectedChargers();
-    });
+    grabConnectedChargers();
   }
 
   @override
@@ -224,11 +219,9 @@ class ChargerCard extends StatefulWidget {
   ChargerCard({
     Key key,
     @required this.chargerID,
-    @required this.app,
   }) : super(key: key);
 
   final chargerID;
-  final FirebaseApp app;
 
   @override
   _ChargerCardState createState() => _ChargerCardState();
@@ -299,8 +292,7 @@ class _ChargerCardState extends State<ChargerCard> {
               showModalBottomSheet(
                   context: context,
                   builder: (builder) {
-                    return new ChargerInfoModal(
-                        chargerID: widget.chargerID, app: widget.app);
+                    return new ChargerInfoModal(chargerID: widget.chargerID);
                   });
             },
             onLongPress: () {
@@ -312,7 +304,6 @@ class _ChargerCardState extends State<ChargerCard> {
                   builder: (builder) {
                     if (!chargerOnline) {
                       return DeleteChargerModal(
-                        app: widget.app,
                         chargerID: widget.chargerID,
                       );
                     } else {
@@ -372,7 +363,7 @@ class _ChargerCardState extends State<ChargerCard> {
     /// This function will to listen to any changes in status of the charger
 
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase(app: widget.app);
+    final FirebaseDatabase database = new FirebaseDatabase();
     String uid = user.uid;
 
     /// Start an onValue listener for the charger's information and
@@ -436,11 +427,9 @@ class _ChargerCardState extends State<ChargerCard> {
 }
 
 class ChargerInfoModal extends StatefulWidget {
-  ChargerInfoModal({Key key, @required this.chargerID, @required this.app})
-      : super(key: key);
+  ChargerInfoModal({Key key, @required this.chargerID}) : super(key: key);
 
   final String chargerID;
-  final FirebaseApp app;
 
   @override
   _ChargerInfoModalState createState() => _ChargerInfoModalState();
@@ -519,7 +508,7 @@ class _ChargerInfoModalState extends State<ChargerInfoModal> {
     /// For each charger, we need to listen to any changes in status
 
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase(app: widget.app);
+    final FirebaseDatabase database = new FirebaseDatabase();
     String uid = user.uid;
 
     /// Start an onValue listener and update UI every time information changes
@@ -550,10 +539,9 @@ class _ChargerInfoModalState extends State<ChargerInfoModal> {
 }
 
 class DeleteChargerModal extends StatefulWidget {
-  DeleteChargerModal({Key key, @required this.app, @required this.chargerID})
+  DeleteChargerModal({Key key, @required this.chargerID})
       : super(key: key);
 
-  final FirebaseApp app;
   final String chargerID;
 
   @override
@@ -595,7 +583,7 @@ class _DeleteChargerModalState extends State<DeleteChargerModal> {
     setState(() {});
 
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase(app: widget.app);
+    final FirebaseDatabase database = new FirebaseDatabase();
     String uid = user.uid;
 
     database

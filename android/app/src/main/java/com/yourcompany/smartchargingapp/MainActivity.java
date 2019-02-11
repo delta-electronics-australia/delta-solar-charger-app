@@ -1,4 +1,4 @@
-package com.yourcompany.smartchargingapp;
+package com.deltaww.smartchargingapp;
 
 import android.os.Bundle;
 

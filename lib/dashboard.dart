@@ -19,25 +19,7 @@ import 'package:charts_flutter/flutter.dart' as charts;
 import 'package:intl/intl.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:vibration/vibration.dart';
 
-Future<FirebaseApp> main() async {
-  final FirebaseApp app = await FirebaseApp.configure(
-    name: 'smart-charging-app',
-    options: Platform.isIOS
-        ? const FirebaseOptions(
-            googleAppID: '1:297855924061:ios:c6de2b69b03a5be8',
-            gcmSenderID: '297855924061',
-            databaseURL: 'https://smart-charging-app.firebaseio.com/',
-          )
-        : const FirebaseOptions(
-            googleAppID: '1:896921007938:android:2be6175bd778747f',
-            apiKey: 'AIzaSyCaxTOBofd7qrnbas5gGsZcuvy_zNSi_ik',
-            databaseURL: 'https://smart-charging-app.firebaseio.com/',
-          ),
-  );
-  return app;
-}
 
 class Dashboard extends StatefulWidget {
   @override
@@ -48,8 +30,6 @@ class _DashboardState extends State<Dashboard> {
   bool loadingData = true;
   var _headingFont = new TextStyle(fontSize: 20.0);
   var _valueFont = new TextStyle(fontSize: 30.0);
-
-  FirebaseApp app;
 
   final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
       new GlobalKey<RefreshIndicatorState>();
@@ -483,9 +463,13 @@ class _DashboardState extends State<Dashboard> {
   }
 
   Future<Null> grabSolarGenerationHistory() async {
+
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase(app: app);
+    print(user);
+    final FirebaseDatabase database = new FirebaseDatabase();
     String uid = user.uid;
+
+    print(uid);
 
     _analyticsRef =
         database.reference().child('users/$uid/analytics/live_analytics');
@@ -543,7 +527,7 @@ class _DashboardState extends State<Dashboard> {
     /// currently charging
 
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase(app: app);
+    final FirebaseDatabase database = new FirebaseDatabase();
     String uid = user.uid;
 
     /// Listen to the evc_inputs charging node to see if there is any change in
@@ -590,7 +574,7 @@ class _DashboardState extends State<Dashboard> {
           var tempTrailingEnergy = new TrailingEnergyUsed(
               chargerID: chargerID,
               latestChargingTimestamp: latestChargingTimestamp,
-              app: app);
+              );
           listOfTrailingEnergy.add(tempTrailingEnergy);
 
           /// Now add a list tile representing that chargerID
@@ -649,6 +633,11 @@ class _DashboardState extends State<Dashboard> {
   }
 
   Future<Null> _signOut() async {
+    _analyticsSubscription.cancel();
+    _chargingSubscription.cancel();
+    _historySubscription.cancel();
+    listOfTrailingEnergy.clear();
+
     await FirebaseAuth.instance.signOut();
     print('Signed out');
     Navigator.of(context)
@@ -658,19 +647,15 @@ class _DashboardState extends State<Dashboard> {
   @override
   void initState() {
     super.initState();
-    main().then((FirebaseApp firebaseapp) {
-      app = firebaseapp;
+    /// This gets values for our Nav email/name
+    getUserDetails();
 
-      /// This gets values for our Nav email/name
-      getUserDetails();
+    /// Grab our info for solar generation
+    grabSolarGenerationHistory();
 
-      /// Grab our info for solar generation
-      grabSolarGenerationHistory();
-
-      /// Grab our info for chargers that are currently charging
-      /// Then grab our daily charger breakdown
-      grabChargingChargers();
-    });
+    /// Grab our info for chargers that are currently charging
+    /// Then grab our daily charger breakdown
+    grabChargingChargers();
   }
 
   @override
@@ -679,12 +664,8 @@ class _DashboardState extends State<Dashboard> {
     _analyticsRef = null;
     _evChargerRef = null;
     _chargingRef = null;
-    _analyticsSubscription.cancel();
-    _chargingSubscription.cancel();
-    _historySubscription.cancel();
-    listOfTrailingEnergy.clear();
 
-    print('Disposed');
+    print('Disposed dashboard');
   }
 }
 
@@ -699,12 +680,10 @@ class TrailingEnergyUsed extends StatefulWidget {
   TrailingEnergyUsed(
       {Key key,
       @required this.chargerID,
-      @required this.app,
       @required this.latestChargingTimestamp})
       : super(key: key);
 
   final chargerID;
-  final FirebaseApp app;
   final latestChargingTimestamp;
 
   @override
@@ -725,7 +704,7 @@ class _TrailingEnergyUsedState extends State<TrailingEnergyUsed> {
 
   Future grabChargingData() async {
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase(app: widget.app);
+    final FirebaseDatabase database = new FirebaseDatabase();
     String uid = user.uid;
 
     /// Then we will start a listener to get the latest value of the
@@ -1285,11 +1264,11 @@ class _SolarGenerationHistoryCardState
     setState(() {});
   }
 
-  void grabInverterHistoryAnalytics(app) async {
+  void grabInverterHistoryAnalytics() async {
     /// This function will grab all of our inverter history analytics
 
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase(app: app);
+    final FirebaseDatabase database = new FirebaseDatabase();
     String uid = user.uid;
 
     /// First start a listener for any changes in inverter history analytics
@@ -1310,10 +1289,7 @@ class _SolarGenerationHistoryCardState
   @override
   void initState() {
     super.initState();
-
-    main().then((FirebaseApp app) {
-      grabInverterHistoryAnalytics(app);
-    });
+    grabInverterHistoryAnalytics();
   }
 
   @override
@@ -1472,7 +1448,7 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
         /// Once we have clicked on the bar chart, we need to scroll down to the
         /// bottom AFTER the widget updates
         Timer(
-            Duration(milliseconds: 100),
+            Duration(milliseconds: 150),
             () => widget.scrollController.animateTo(
                 widget.scrollController.position.maxScrollExtent,
                 duration: Duration(milliseconds: 150),
@@ -1481,12 +1457,12 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
     }
   }
 
-  Future<Null> grabDailyChargerBreakdown(app) async {
+  Future<Null> grabDailyChargerBreakdown() async {
     /// This function grabs all of the data needed to draw the daily charger
     /// breakdown bar chart
 
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase(app: app);
+    final FirebaseDatabase database = new FirebaseDatabase();
     String uid = user.uid;
 
     /// Define our list of ev chargers
@@ -1583,25 +1559,23 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
     return seriesList;
   }
 
-  startListeningToChargingStatus(app) async {
+  startListeningToChargingStatus() async {
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase(app: app);
+    final FirebaseDatabase database = new FirebaseDatabase();
     String uid = user.uid;
 
     /// Start a listener for changes in charging status of our chargers
     _chargingRef = database.reference().child('users/$uid/evc_inputs/charging');
     _chargingSubscription = _chargingRef.onValue.listen((Event event) async {
-      grabDailyChargerBreakdown(app);
+      grabDailyChargerBreakdown();
     });
   }
 
   @override
   void initState() {
     super.initState();
+    startListeningToChargingStatus();
 
-    main().then((FirebaseApp app) {
-      startListeningToChargingStatus(app);
-    });
   }
 
   @override
