@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 
 import 'package:smart_charging_app/authenticate.dart';
+
+import 'package:smart_charging_app/admin_dashboard.dart';
 import 'package:smart_charging_app/dashboard.dart';
 import 'package:smart_charging_app/initial_setup.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 void main() => runApp(new MyApp());
 
@@ -20,7 +23,7 @@ class MyApp extends StatelessWidget {
         ),
         home: new LandingPage(),
         routes: <String, WidgetBuilder>{
-//          "/": (BuildContext context) => new LandingPage(),
+          "/AdminDashboard": (BuildContext context) => new AdminDashboard(),
           "/Dashboard": (BuildContext context) => new Dashboard(),
           "/InitialSetup": (BuildContext context) => new InitialSetup()
         });
@@ -60,7 +63,6 @@ class _LandingPageState extends State<LandingPage> {
     print('Signed out');
   }
 
-
   void _handleLogin() {
     // Set loggingIn to true, so we have a circular progress icon
     setState(() {
@@ -69,15 +71,27 @@ class _LandingPageState extends State<LandingPage> {
 
     user.email = email;
     user.password = password;
-//    user.email = 'jgv115@gmail.com';
-//    user.password = 'test123';
 
     userAuth.verifyUser(user).then((onValue) async {
       print(onValue);
       if (onValue == "Login Successful") {
         loggingIn = false;
 
-        Navigator.pushNamed(context, "/Dashboard");
+        FirebaseUser user = await FirebaseAuth.instance.currentUser();
+
+        final FirebaseDatabase database = new FirebaseDatabase();
+        database
+            .reference()
+            .child('users/${user.uid}/user_info/account_type')
+            .once()
+            .then((DataSnapshot snapshot) {
+          if (snapshot.value == "admin") {
+            print('admin!!!!');
+            Navigator.pushNamed(context, "/AdminDashboard");
+          } else {
+            Navigator.pushNamed(context, "/Dashboard");
+          }
+        });
       } else {
         showDialog(
             context: context,
@@ -188,8 +202,25 @@ class _LandingPageState extends State<LandingPage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: <Widget>[
                           new RaisedButton(
-                            onPressed: () {
-                              Navigator.pushNamed(context, "/Dashboard");
+                            onPressed: () async {
+                              FirebaseUser user =
+                                  await FirebaseAuth.instance.currentUser();
+                              final FirebaseDatabase database =
+                                  new FirebaseDatabase();
+                              database
+                                  .reference()
+                                  .child(
+                                      'users/${user.uid}/user_info/account_type')
+                                  .once()
+                                  .then((DataSnapshot snapshot) {
+                                if (snapshot.value == "admin") {
+                                  print('admin!!!!');
+                                  Navigator.pushNamed(
+                                      context, "/AdminDashboard");
+                                } else {
+                                  Navigator.pushNamed(context, "/Dashboard");
+                                }
+                              });
                             },
                             child: new Text(
                                 'Login as ${snapshot.data.displayName}'),

@@ -461,6 +461,9 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
   }
 
   void _submitNameButtonPressed() async {
+
+    FocusScope.of(context).requestFocus(new FocusNode());
+
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
 
     database

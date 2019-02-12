@@ -8,6 +8,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'package:smart_charging_app/admin_dashboard.dart';
 import 'package:smart_charging_app/liveDataStream.dart';
 import 'package:smart_charging_app/solarChargerSettings.dart';
 import 'package:smart_charging_app/chargeSession.dart';
@@ -118,6 +119,8 @@ class _DashboardState extends State<Dashboard> {
   ObjectKey solarGenerationKey;
   ObjectKey dailyChargerBreakdownKey;
 
+  bool isAdminAccount = false;
+
   @override
   Widget build(BuildContext context) {
     return new WillPopScope(
@@ -132,6 +135,28 @@ class _DashboardState extends State<Dashboard> {
                 accountEmail: Text(_displayEmail),
                 decoration: new BoxDecoration(color: Colors.blue),
               ),
+              isAdminAccount
+                  ? ListView(
+                      shrinkWrap: true,
+                      physics: NeverScrollableScrollPhysics(),
+                      children: <Widget>[
+                        ListTile(
+                          leading: const Icon(Icons.supervisor_account),
+                          title: const Text('Admin Dashboard'),
+                          onTap: () {
+//                            MaterialPageRoute route = new MaterialPageRoute(
+//                                builder: (BuildContext context) =>
+//                                    new AdminDashboard());
+//                            Navigator.of(context).pop();
+//                            Navigator.of(context).push(route);
+                            Navigator.popUntil(context,
+                                ModalRoute.withName('/AdminDashboard'));
+                          },
+                        ),
+                        new Divider()
+                      ],
+                    )
+                  : new Container(),
               ListTile(
                 leading: const Icon(Icons.dashboard),
                 title: const Text('Dashboard'),
@@ -143,7 +168,7 @@ class _DashboardState extends State<Dashboard> {
                 leading: const Icon(Icons.show_chart),
                 title: const Text('Live System Data'),
                 onTap: () {
-                  var route = new MaterialPageRoute(
+                  MaterialPageRoute route = new MaterialPageRoute(
                       builder: (BuildContext context) => new DataStreamPage1());
                   Navigator.of(context).pop();
                   Navigator.of(context).push(route);
@@ -459,19 +484,42 @@ class _DashboardState extends State<Dashboard> {
     if (now.difference(currentBackPressTime) > Duration(seconds: 3)) {
       /// Then we show a toast for the user to confirm that they want to exit the app
       currentBackPressTime = now;
-      Fluttertoast.showToast(msg: 'Press back again to exit app');
+
+      if (isAdminAccount) {
+        Fluttertoast.showToast(
+            msg: 'Press back again to exit to admin dashboard');
+      } else {
+        Fluttertoast.showToast(msg: 'Press back again to exit app');
+      }
 
       /// Prevent the back button from working
       return new Future(() => false);
     }
 
-    /// If back button is pressed twice within 3 seconds then we exit the app
-    exit(0);
+    if (isAdminAccount) {
+    } else {
+      /// If back button is pressed twice within 3 seconds then we exit the app
+      exit(0);
+    }
+
     return new Future(() => true);
   }
 
   getUserDetails() {
-    FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
+    FirebaseAuth.instance.currentUser().then((FirebaseUser user) async {
+      final FirebaseDatabase database = new FirebaseDatabase();
+      database
+          .reference()
+          .child('users/${user.uid}/user_info/account_type')
+          .once()
+          .then((DataSnapshot snapshot) {
+        if (snapshot.value == "admin") {
+          isAdminAccount = true;
+        } else {
+          isAdminAccount = false;
+        }
+      });
+
       setState(() {
         _displayName = user.displayName;
         _displayEmail = user.email;
@@ -481,11 +529,8 @@ class _DashboardState extends State<Dashboard> {
 
   Future<Null> grabSolarGenerationHistory() async {
     FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    print(user);
     final FirebaseDatabase database = new FirebaseDatabase();
     String uid = user.uid;
-
-    print(uid);
 
     _analyticsRef =
         database.reference().child('users/$uid/analytics/live_analytics');
@@ -681,6 +726,10 @@ class _DashboardState extends State<Dashboard> {
     _analyticsRef = null;
     _evChargerRef = null;
     _chargingRef = null;
+    _analyticsSubscription.cancel();
+    _chargingSubscription.cancel();
+    _historySubscription.cancel();
+    listOfTrailingEnergy.clear();
 
     print('Disposed dashboard');
   }
