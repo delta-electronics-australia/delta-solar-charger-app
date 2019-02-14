@@ -3,6 +3,8 @@ import 'dart:io' show Platform;
 import 'dart:io';
 import 'dart:async';
 
+import 'globals.dart' as globals;
+
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -40,10 +42,6 @@ class ChargerInfo extends StatefulWidget {
 class _ChargerInfoState extends State<ChargerInfo> {
   List evChargerList = [];
 
-  /// Initialize the strings that will define our display name and email
-  String _displayName = "";
-  String _displayEmail = "";
-
   List<Widget> chargerCardList = [];
 
   StreamSubscription _evChargersSubscription;
@@ -56,12 +54,34 @@ class _ChargerInfoState extends State<ChargerInfo> {
         ),
         drawer: new Drawer(
             child: ListView(children: <Widget>[
-          UserAccountsDrawerHeader(
-            accountName: Text(_displayName),
-            accountEmail: Text(_displayEmail),
-//                currentAccountPicture: const CircleAvatar(),
-            decoration: new BoxDecoration(color: Colors.blue),
-          ),
+          globals.isAdmin
+              ? UserAccountsDrawerHeader(
+                  accountName:
+                      Text('Currently logged in as ${globals.systemName}'),
+                  decoration: new BoxDecoration(color: Colors.blue),
+                )
+              : UserAccountsDrawerHeader(
+                  accountName: Text(globals.displayName),
+                  accountEmail: Text(globals.displayEmail),
+                  decoration: new BoxDecoration(color: Colors.blue),
+                ),
+          globals.isAdmin
+              ? ListView(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  children: <Widget>[
+                    ListTile(
+                      leading: const Icon(Icons.supervisor_account),
+                      title: const Text('Admin Dashboard'),
+                      onTap: () {
+                        Navigator.popUntil(
+                            context, ModalRoute.withName('/AdminDashboard'));
+                      },
+                    ),
+                    new Divider()
+                  ],
+                )
+              : new Container(),
           ListTile(
             leading: const Icon(Icons.dashboard),
             title: const Text('Dashboard'),
@@ -75,7 +95,7 @@ class _ChargerInfoState extends State<ChargerInfo> {
             onTap: () {
               var route = new MaterialPageRoute(
                   builder: (BuildContext context) => new DataStreamPage1());
-              Navigator.of(context).pop();
+              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
               Navigator.of(context).push(route);
             },
           ),
@@ -86,7 +106,7 @@ class _ChargerInfoState extends State<ChargerInfo> {
             onTap: () {
               var route = new MaterialPageRoute(
                   builder: (BuildContext context) => new InverterArchive());
-              Navigator.of(context).pop();
+              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
               Navigator.of(context).push(route);
             },
           ),
@@ -96,7 +116,7 @@ class _ChargerInfoState extends State<ChargerInfo> {
             onTap: () {
               var route = new MaterialPageRoute(
                   builder: (BuildContext context) => new ChargingArchive());
-              Navigator.of(context).pop();
+              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
               Navigator.of(context).push(route);
             },
           ),
@@ -116,7 +136,7 @@ class _ChargerInfoState extends State<ChargerInfo> {
               var route = new MaterialPageRoute(
                   builder: (BuildContext context) =>
                       new SolarChargerSettings());
-              Navigator.of(context).pop();
+              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
               Navigator.of(context).push(route);
             },
           ),
@@ -167,14 +187,10 @@ class _ChargerInfoState extends State<ChargerInfo> {
     /// It will start a listener on the ev_chargers node and callback when that node
     /// has changed
 
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase();
-    String uid = user.uid;
-
     /// We listen for any changes in the ev chargers node
-    _evChargersSubscription = database
+    _evChargersSubscription = globals.database
         .reference()
-        .child('users/$uid/ev_chargers')
+        .child('users/${globals.uid}/ev_chargers')
         .onValue
         .listen((Event event) {
       DataSnapshot snapshot = event.snapshot;
@@ -191,20 +207,10 @@ class _ChargerInfoState extends State<ChargerInfo> {
     });
   }
 
-  void getUserDetails() {
-    FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
-      setState(() {
-        _displayName = user.displayName;
-        _displayEmail = user.email;
-      });
-    });
-  }
-
   @override
   void initState() {
     super.initState();
 
-    getUserDetails();
     grabConnectedChargers();
   }
 
@@ -362,15 +368,11 @@ class _ChargerCardState extends State<ChargerCard> {
     /// This is called as soon as the charger card is created.
     /// This function will to listen to any changes in status of the charger
 
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase();
-    String uid = user.uid;
-
     /// Start an onValue listener for the charger's information and
     /// update the UI every time information changes
-    _chargerInfoSubscription = database
+    _chargerInfoSubscription = globals.database
         .reference()
-        .child('users/$uid/evc_inputs/${widget.chargerID}')
+        .child('users/${globals.uid}/evc_inputs/${widget.chargerID}')
         .onValue
         .listen((Event event) {
       /// First check if the charger ID node exists for the charger ID
@@ -507,14 +509,10 @@ class _ChargerInfoModalState extends State<ChargerInfoModal> {
   void startChargerInfoListener() async {
     /// For each charger, we need to listen to any changes in status
 
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase();
-    String uid = user.uid;
-
     /// Start an onValue listener and update UI every time information changes
-    _chargingInfoSubscription = database
+    _chargingInfoSubscription = globals.database
         .reference()
-        .child('users/$uid/evc_inputs/${widget.chargerID}')
+        .child('users/${globals.uid}/evc_inputs/${widget.chargerID}')
         .onValue
         .listen((Event event) {
       chargerInfo = event.snapshot.value['charger_info'];
@@ -539,8 +537,7 @@ class _ChargerInfoModalState extends State<ChargerInfoModal> {
 }
 
 class DeleteChargerModal extends StatefulWidget {
-  DeleteChargerModal({Key key, @required this.chargerID})
-      : super(key: key);
+  DeleteChargerModal({Key key, @required this.chargerID}) : super(key: key);
 
   final String chargerID;
 
@@ -582,18 +579,14 @@ class _DeleteChargerModalState extends State<DeleteChargerModal> {
     deletingCharger = true;
     setState(() {});
 
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase();
-    String uid = user.uid;
-
-    database
+    globals.database
         .reference()
-        .child('users/$uid/evc_inputs/')
+        .child('users/${globals.uid}/evc_inputs/')
         .update({"delete_charger": widget.chargerID}).then((onValue) {
       /// Now listen to see if the charger is gone
-      _deleteChargerSubscription = database
+      _deleteChargerSubscription = globals.database
           .reference()
-          .child('users/$uid/evc_inputs/delete_charger')
+          .child('users/${globals.uid}/evc_inputs/delete_charger')
           .onValue
           .listen((Event event) {
         DataSnapshot snapshot = event.snapshot;

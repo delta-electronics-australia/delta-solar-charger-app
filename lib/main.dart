@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 
 import 'package:smart_charging_app/authenticate.dart';
+import 'globals.dart' as globals;
 
 import 'package:smart_charging_app/admin_dashboard.dart';
 import 'package:smart_charging_app/dashboard.dart';
 import 'package:smart_charging_app/initial_setup.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_database/firebase_database.dart';
 
 void main() => runApp(new MyApp());
 
@@ -77,21 +77,16 @@ class _LandingPageState extends State<LandingPage> {
       if (onValue == "Login Successful") {
         loggingIn = false;
 
-        FirebaseUser user = await FirebaseAuth.instance.currentUser();
+        bool isAdmin = await globals.checkForAdminStatus();
+        await globals.getUserDetails();
+        await globals.getFirebaseUID();
 
-        final FirebaseDatabase database = new FirebaseDatabase();
-        database
-            .reference()
-            .child('users/${user.uid}/user_info/account_type')
-            .once()
-            .then((DataSnapshot snapshot) {
-          if (snapshot.value == "admin") {
-            print('admin!!!!');
-            Navigator.pushNamed(context, "/AdminDashboard");
-          } else {
-            Navigator.pushNamed(context, "/Dashboard");
-          }
-        });
+        if (isAdmin) {
+          print('admin!!!!');
+          Navigator.pushNamed(context, "/AdminDashboard");
+        } else {
+          Navigator.pushNamed(context, "/Dashboard");
+        }
       } else {
         showDialog(
             context: context,
@@ -203,24 +198,17 @@ class _LandingPageState extends State<LandingPage> {
                         children: <Widget>[
                           new RaisedButton(
                             onPressed: () async {
-                              FirebaseUser user =
-                                  await FirebaseAuth.instance.currentUser();
-                              final FirebaseDatabase database =
-                                  new FirebaseDatabase();
-                              database
-                                  .reference()
-                                  .child(
-                                      'users/${user.uid}/user_info/account_type')
-                                  .once()
-                                  .then((DataSnapshot snapshot) {
-                                if (snapshot.value == "admin") {
-                                  print('admin!!!!');
-                                  Navigator.pushNamed(
-                                      context, "/AdminDashboard");
-                                } else {
-                                  Navigator.pushNamed(context, "/Dashboard");
-                                }
-                              });
+                              bool isAdmin =
+                                  await globals.checkForAdminStatus();
+                              await globals.getUserDetails();
+                              await globals.getFirebaseUID();
+
+                              if (isAdmin) {
+                                print('admin!!!!');
+                                Navigator.pushNamed(context, "/AdminDashboard");
+                              } else {
+                                Navigator.pushNamed(context, "/Dashboard");
+                              }
                             },
                             child: new Text(
                                 'Login as ${snapshot.data.displayName}'),

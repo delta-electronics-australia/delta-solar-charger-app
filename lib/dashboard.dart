@@ -4,6 +4,8 @@ import 'dart:io';
 import 'dart:async';
 import 'dart:math';
 
+import 'globals.dart' as globals;
+
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -119,23 +121,29 @@ class _DashboardState extends State<Dashboard> {
   ObjectKey solarGenerationKey;
   ObjectKey dailyChargerBreakdownKey;
 
-  bool isAdminAccount = false;
-
   @override
   Widget build(BuildContext context) {
     return new WillPopScope(
         child: new Scaffold(
             appBar: new AppBar(
-              title: const Text("Delta Solar Charger Dashboard"),
+              title: globals.isAdmin
+                  ? new Text("${globals.systemName}'s Dashboard")
+                  : new Text("Delta Solar Charger Dashboard"),
             ),
             drawer: new Drawer(
                 child: ListView(children: <Widget>[
-              UserAccountsDrawerHeader(
-                accountName: Text(_displayName),
-                accountEmail: Text(_displayEmail),
-                decoration: new BoxDecoration(color: Colors.blue),
-              ),
-              isAdminAccount
+              globals.isAdmin
+                  ? UserAccountsDrawerHeader(
+                      accountName:
+                          Text('Currently logged in as ${globals.systemName}'),
+                      decoration: new BoxDecoration(color: Colors.blue),
+                    )
+                  : UserAccountsDrawerHeader(
+                      accountName: Text(globals.displayName),
+                      accountEmail: Text(globals.displayEmail),
+                      decoration: new BoxDecoration(color: Colors.blue),
+                    ),
+              globals.isAdmin
                   ? ListView(
                       shrinkWrap: true,
                       physics: NeverScrollableScrollPhysics(),
@@ -144,11 +152,6 @@ class _DashboardState extends State<Dashboard> {
                           leading: const Icon(Icons.supervisor_account),
                           title: const Text('Admin Dashboard'),
                           onTap: () {
-//                            MaterialPageRoute route = new MaterialPageRoute(
-//                                builder: (BuildContext context) =>
-//                                    new AdminDashboard());
-//                            Navigator.of(context).pop();
-//                            Navigator.of(context).push(route);
                             Navigator.popUntil(context,
                                 ModalRoute.withName('/AdminDashboard'));
                           },
@@ -485,7 +488,7 @@ class _DashboardState extends State<Dashboard> {
       /// Then we show a toast for the user to confirm that they want to exit the app
       currentBackPressTime = now;
 
-      if (isAdminAccount) {
+      if (globals.isAdmin) {
         Fluttertoast.showToast(
             msg: 'Press back again to exit to admin dashboard');
       } else {
@@ -496,7 +499,7 @@ class _DashboardState extends State<Dashboard> {
       return new Future(() => false);
     }
 
-    if (isAdminAccount) {
+    if (globals.isAdmin) {
     } else {
       /// If back button is pressed twice within 3 seconds then we exit the app
       exit(0);
@@ -505,35 +508,10 @@ class _DashboardState extends State<Dashboard> {
     return new Future(() => true);
   }
 
-  getUserDetails() {
-    FirebaseAuth.instance.currentUser().then((FirebaseUser user) async {
-      final FirebaseDatabase database = new FirebaseDatabase();
-      database
-          .reference()
-          .child('users/${user.uid}/user_info/account_type')
-          .once()
-          .then((DataSnapshot snapshot) {
-        if (snapshot.value == "admin") {
-          isAdminAccount = true;
-        } else {
-          isAdminAccount = false;
-        }
-      });
-
-      setState(() {
-        _displayName = user.displayName;
-        _displayEmail = user.email;
-      });
-    });
-  }
-
   Future<Null> grabSolarGenerationHistory() async {
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase();
-    String uid = user.uid;
-
-    _analyticsRef =
-        database.reference().child('users/$uid/analytics/live_analytics');
+    _analyticsRef = globals.database
+        .reference()
+        .child('users/${globals.uid}/analytics/live_analytics');
 
     _analyticsSubscription = _analyticsRef.onValue.listen((Event event) {
       var snapshot = event.snapshot.value;
@@ -557,9 +535,8 @@ class _DashboardState extends State<Dashboard> {
     DateFormat todayDateFormat = new DateFormat('yyyy-MM-dd');
 
     /// First define our history reference node
-    _historyRef = database
-        .reference()
-        .child('users/$uid/history/${todayDateFormat.format(DateTime.now())}');
+    _historyRef = globals.database.reference().child(
+        'users/${globals.uid}/history/${todayDateFormat.format(DateTime.now())}');
 
     /// Then get the battery SOC straight away
     _historyRef.limitToLast(1).once().then((DataSnapshot snapshot) {
@@ -587,13 +564,11 @@ class _DashboardState extends State<Dashboard> {
     /// This function will grab information about the chargers that are
     /// currently charging
 
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase();
-    String uid = user.uid;
-
     /// Listen to the evc_inputs charging node to see if there is any change in
     /// charging state
-    _chargingRef = database.reference().child('users/$uid/evc_inputs/charging');
+    _chargingRef = globals.database
+        .reference()
+        .child('users/${globals.uid}/evc_inputs/charging');
     _chargingSubscription = _chargingRef.onValue.listen((Event event) async {
       var chargingObj = event.snapshot.value;
 
@@ -605,9 +580,9 @@ class _DashboardState extends State<Dashboard> {
         /// If they are charging then we want to extract the charge session
         if (isCharging == true) {
           /// Get our latest date for this chargerID
-          DataSnapshot tempSnapshot = await database
+          DataSnapshot tempSnapshot = await globals.database
               .reference()
-              .child('users/$uid/charging_history_keys/$chargerID')
+              .child('users/${globals.uid}/charging_history_keys/$chargerID')
               .orderByKey()
               .limitToLast(1)
               .once();
@@ -616,10 +591,10 @@ class _DashboardState extends State<Dashboard> {
               tempSnapshot.value.keys.toList(growable: false)[0];
 
           /// Using the latest date, get the latest time
-          tempSnapshot = await database
+          tempSnapshot = await globals.database
               .reference()
               .child(
-                  'users/$uid/charging_history_keys/$chargerID/$latestChargingDate')
+                  'users/${globals.uid}/charging_history_keys/$chargerID/$latestChargingDate')
               .orderByKey()
               .limitToLast(1)
               .once();
@@ -650,7 +625,6 @@ class _DashboardState extends State<Dashboard> {
                     return new ChargingSessionModal(
                       chargerID: chargerID,
                       latestChargingTimestamp: latestChargingTimestamp,
-                      database: database,
                     );
                   });
             },
@@ -666,7 +640,7 @@ class _DashboardState extends State<Dashboard> {
                   context: context,
                   builder: (builder) {
                     return new RemoteStartTransactionModal(
-                        chargerID: chargerID, database: database);
+                        chargerID: chargerID);
                   });
             },
           ));
@@ -708,9 +682,6 @@ class _DashboardState extends State<Dashboard> {
   @override
   void initState() {
     super.initState();
-
-    /// This gets values for our Nav email/name
-    getUserDetails();
 
     /// Grab our info for solar generation
     grabSolarGenerationHistory();
@@ -769,16 +740,12 @@ class _TrailingEnergyUsedState extends State<TrailingEnergyUsed> {
   }
 
   Future grabChargingData() async {
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase();
-    String uid = user.uid;
-
     /// Then we will start a listener to get the latest value of the
     /// amount of energy charged. Then append the tempList
-    chargeSessionSubscription = database
+    chargeSessionSubscription = globals.database
         .reference()
         .child(
-            'users/$uid/charging_history/${widget.chargerID}/${widget.latestChargingTimestamp}')
+            'users/${globals.uid}/charging_history/${widget.chargerID}/${widget.latestChargingTimestamp}')
         .limitToLast(1)
         .onValue
         .listen((Event event) {
@@ -820,12 +787,10 @@ class _TrailingEnergyUsedState extends State<TrailingEnergyUsed> {
 }
 
 class RemoteStartTransactionModal extends StatefulWidget {
-  RemoteStartTransactionModal(
-      {Key key, @required this.chargerID, @required this.database})
+  RemoteStartTransactionModal({Key key, @required this.chargerID})
       : super(key: key);
 
   final chargerID;
-  final database;
 
   @override
   _RemoteStartTransactionModalState createState() =>
@@ -858,12 +823,10 @@ class _RemoteStartTransactionModalState
       startingCharge = true;
     });
 
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    String uid = user.uid;
-
-    FirebaseDatabase database = widget.database;
-
-    database.reference().child('users/$uid/evc_inputs').update({
+    globals.database
+        .reference()
+        .child('users/${globals.uid}/evc_inputs')
+        .update({
       "misc_command": {
         "chargerID": widget.chargerID,
         "action": "RemoteStartTransaction",
@@ -871,9 +834,9 @@ class _RemoteStartTransactionModalState
       }
     });
 
-    chargingSubscription = database
+    chargingSubscription = globals.database
         .reference()
-        .child('users/$uid/evc_inputs/charging/${widget.chargerID}')
+        .child('users/${globals.uid}/evc_inputs/charging/${widget.chargerID}')
         .onValue
         .listen((Event event) {
       var isCharging = event.snapshot.value;
@@ -895,12 +858,10 @@ class ChargingSessionModal extends StatefulWidget {
   ChargingSessionModal(
       {Key key,
       @required this.chargerID,
-      @required this.database,
       @required this.latestChargingTimestamp})
       : super(key: key);
 
   final chargerID;
-  final database;
   final latestChargingTimestamp;
 
   @override
@@ -997,7 +958,6 @@ class _ChargingSessionModalState extends State<ChargingSessionModal> {
                               new ChargeSessionPage(
                                 latestChargingTimestamp:
                                     widget.latestChargingTimestamp,
-                                database: widget.database,
                                 chargerID: widget.chargerID,
                               ));
                       Navigator.of(context).push(route);
@@ -1016,11 +976,10 @@ class _ChargingSessionModalState extends State<ChargingSessionModal> {
       stoppingCharging = true;
     });
 
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    String uid = user.uid;
-    final FirebaseDatabase database = widget.database;
-
-    database.reference().child('users/$uid/evc_inputs').update({
+    globals.database
+        .reference()
+        .child('users/${globals.uid}/evc_inputs')
+        .update({
       "misc_command": {
         "chargerID": widget.chargerID,
         "action": "RemoteStopTransaction",
@@ -1028,9 +987,9 @@ class _ChargingSessionModalState extends State<ChargingSessionModal> {
       }
     });
 
-    chargingSubscription = database
+    chargingSubscription = globals.database
         .reference()
-        .child('users/$uid/evc_inputs/charging/${widget.chargerID}')
+        .child('users/${globals.uid}/evc_inputs/charging/${widget.chargerID}')
         .onValue
         .listen((Event event) {
       var isCharging = event.snapshot.value;
@@ -1072,16 +1031,13 @@ class _ChargingSessionModalState extends State<ChargingSessionModal> {
   }
 
   grabChargingSessionData() async {
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    String uid = user.uid;
-    final FirebaseDatabase database = widget.database;
     DateTime chargingStartTimeObj;
 
     /// Find when the charging session started
-    database
+    globals.database
         .reference()
         .child(
-            'users/$uid/charging_history/${widget.chargerID}/${widget.latestChargingTimestamp}')
+            'users/${globals.uid}/charging_history/${widget.chargerID}/${widget.latestChargingTimestamp}')
         .limitToFirst(1)
         .once()
         .then((DataSnapshot snapshot) {
@@ -1093,10 +1049,10 @@ class _ChargingSessionModalState extends State<ChargingSessionModal> {
       setState(() {});
 
       /// Now get our latest time object
-      database
+      globals.database
           .reference()
           .child(
-              'users/$uid/charging_history/${widget.chargerID}/${widget.latestChargingTimestamp}')
+              'users/${globals.uid}/charging_history/${widget.chargerID}/${widget.latestChargingTimestamp}')
           .limitToLast(1)
           .once()
           .then((DataSnapshot snapshot) {
@@ -1115,10 +1071,10 @@ class _ChargingSessionModalState extends State<ChargingSessionModal> {
     });
 
     /// Then we will start a listener to get the latest values of the charge session
-    chargeSessionSubscription = database
+    chargeSessionSubscription = globals.database
         .reference()
         .child(
-            'users/$uid/charging_history/${widget.chargerID}/${widget.latestChargingTimestamp}')
+            'users/${globals.uid}/charging_history/${widget.chargerID}/${widget.latestChargingTimestamp}')
         .limitToLast(1)
         .onValue
         .listen((Event event) {
@@ -1333,15 +1289,11 @@ class _SolarGenerationHistoryCardState
   void grabInverterHistoryAnalytics() async {
     /// This function will grab all of our inverter history analytics
 
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase();
-    String uid = user.uid;
-
     /// First start a listener for any changes in inverter history analytics
     /// Whenever the day changes the graph will automatically update
-    _inverterHistoryAnalyticsSubscription = database
+    _inverterHistoryAnalyticsSubscription = globals.database
         .reference()
-        .child('users/$uid/analytics/inverter_history_analytics')
+        .child('users/${globals.uid}/analytics/inverter_history_analytics')
         .limitToLast(15)
         .onValue
         .listen((Event event) {
@@ -1514,7 +1466,7 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
         /// Once we have clicked on the bar chart, we need to scroll down to the
         /// bottom AFTER the widget updates
         Timer(
-            Duration(milliseconds: 150),
+            Duration(milliseconds: 300),
             () => widget.scrollController.animateTo(
                 widget.scrollController.position.maxScrollExtent,
                 duration: Duration(milliseconds: 150),
@@ -1527,22 +1479,18 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
     /// This function grabs all of the data needed to draw the daily charger
     /// breakdown bar chart
 
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase();
-    String uid = user.uid;
-
     /// Define our list of ev chargers
     List evChargers = [];
 
     /// Now grab our ev chargers from Firebase, populate them in a list
-    _evChargerRef =
-        database.reference().child('users/$uid/evc_inputs/charging');
+    _evChargerRef = globals.database
+        .reference()
+        .child('users/${globals.uid}/evc_inputs/charging');
     DataSnapshot snapshot = await _evChargerRef.once();
     evChargers = snapshot.value.keys.toList(growable: false);
 
     /// seriesArray is the final array of series to go into build
-    var seriesArray =
-        await grabChargerAnalyticsValues(user, database, evChargers, 15);
+    var seriesArray = await grabChargerAnalyticsValues(evChargers, 15);
 
     if (this.mounted) {
       setState(() {
@@ -1551,12 +1499,10 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
     }
   }
 
-  Future grabChargerAnalyticsValues(user, database, evChargers, numDays) async {
+  Future grabChargerAnalyticsValues(evChargers, numDays) async {
     /// This function takes in the list of evChargers, grabs all of the
     /// charging analytics information for them and puts them into chart Series
     /// ready to be charted
-
-    String uid = user.uid;
 
     /// Initialize a dateFormatter
     var dateFormatter = new DateFormat('yyyy-MM-dd');
@@ -1568,9 +1514,10 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
     /// Loop through all of our EV Chargers
     for (String chargerID in evChargers) {
       /// Download charging history analytics for this EV Charger
-      DataSnapshot tempSnapshot = await database
+      DataSnapshot tempSnapshot = await globals.database
           .reference()
-          .child('users/$uid/analytics/charging_history_analytics/$chargerID/')
+          .child(
+              'users/${globals.uid}/analytics/charging_history_analytics/$chargerID/')
           .limitToLast(numDays)
           .once();
       var tempData = tempSnapshot.value;
@@ -1626,12 +1573,10 @@ class _DailyChargerBreakdownCardState extends State<DailyChargerBreakdownCard> {
   }
 
   startListeningToChargingStatus() async {
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase();
-    String uid = user.uid;
-
     /// Start a listener for changes in charging status of our chargers
-    _chargingRef = database.reference().child('users/$uid/evc_inputs/charging');
+    _chargingRef = globals.database
+        .reference()
+        .child('users/${globals.uid}/evc_inputs/charging');
     _chargingSubscription = _chargingRef.onValue.listen((Event event) async {
       grabDailyChargerBreakdown();
     });

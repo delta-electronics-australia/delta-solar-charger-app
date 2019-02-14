@@ -6,6 +6,8 @@ import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'globals.dart' as globals;
+
 import 'package:charts_flutter/flutter.dart' as charts;
 import 'package:intl/intl.dart';
 
@@ -28,18 +30,16 @@ Future<FirebaseApp> main() async {
 }
 
 class ChargeSessionPage extends StatefulWidget {
-  ChargeSessionPage(
-      {Key key,
-      @required this.chargerID,
-      @required this.startDate,
-      @required this.startTime,
-      @required this.database})
-      : super(key: key);
+  ChargeSessionPage({
+    Key key,
+    @required this.chargerID,
+    @required this.startDate,
+    @required this.startTime,
+  }) : super(key: key);
 
   final chargerID;
   final startDate;
   final startTime;
-  final database;
 
   @override
   _ChargeSessionPageState createState() => new _ChargeSessionPageState();
@@ -262,7 +262,8 @@ class _ChargeSessionLineState extends State<ChargeSessionLine> {
       "chargerID": widget.chargerID,
       "start_date": widget.startDate,
       "start_time": widget.startTime,
-      "idToken": idToken
+      "idToken": idToken,
+      "uid": globals.uid
     };
 
     List timestamps;

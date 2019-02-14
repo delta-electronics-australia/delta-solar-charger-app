@@ -4,6 +4,8 @@ import 'dart:async';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'globals.dart' as globals;
+
 import 'package:smart_charging_app/authenticate.dart';
 import 'package:smart_charging_app/liveDataStream.dart';
 import 'package:smart_charging_app/charging_archive.dart';
@@ -18,12 +20,6 @@ class SolarChargerSettings extends StatefulWidget {
 }
 
 class _SolarChargerSettingsState extends State<SolarChargerSettings> {
-  FirebaseDatabase database;
-
-  /// Initialize the strings that will define our display name and email
-  String _displayName = "";
-  String _displayEmail = "";
-
   final _headingFont = const TextStyle(fontSize: 22.0);
   Map<String, String> chargingModeOptions = {
     'Standalone: PV with Battery Backup': 'PV_with_BT',
@@ -73,12 +69,34 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
       appBar: new AppBar(title: const Text('Delta Solar Charger Settings')),
       drawer: new Drawer(
           child: ListView(children: <Widget>[
-        UserAccountsDrawerHeader(
-          accountName: Text(_displayName),
-          accountEmail: Text(_displayEmail),
-//                currentAccountPicture: const CircleAvatar(),
-          decoration: new BoxDecoration(color: Colors.blue),
-        ),
+        globals.isAdmin
+            ? UserAccountsDrawerHeader(
+                accountName:
+                    Text('Currently logged in as ${globals.systemName}'),
+                decoration: new BoxDecoration(color: Colors.blue),
+              )
+            : UserAccountsDrawerHeader(
+                accountName: Text(globals.displayName),
+                accountEmail: Text(globals.displayEmail),
+                decoration: new BoxDecoration(color: Colors.blue),
+              ),
+        globals.isAdmin
+            ? ListView(
+                shrinkWrap: true,
+                physics: NeverScrollableScrollPhysics(),
+                children: <Widget>[
+                  ListTile(
+                    leading: const Icon(Icons.supervisor_account),
+                    title: const Text('Admin Dashboard'),
+                    onTap: () {
+                      Navigator.popUntil(
+                          context, ModalRoute.withName('/AdminDashboard'));
+                    },
+                  ),
+                  new Divider()
+                ],
+              )
+            : new Container(),
         ListTile(
           leading: const Icon(Icons.dashboard),
           title: const Text('Dashboard'),
@@ -390,15 +408,15 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
     setState(() {});
 
     /// 1) First send a Firebase message to do the firmware update
-    database
+    globals.database
         .reference()
-        .child('users/$uid/evc_inputs/')
+        .child('users/${globals.uid}/evc_inputs/')
         .update({'dsc_firmware_update': true});
 
     /// 2) Then start a listener and listen for ranges in current version
-    _versionSubscription = database
+    _versionSubscription = globals.database
         .reference()
-        .child('users/$uid/version')
+        .child('users/${globals.uid}/version')
         .onValue
         .listen((Event event) {
       if (event.snapshot.value != currentVersion) {
@@ -424,12 +442,13 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
 
     /// Get the latest version number
     DataSnapshot latestVersionNumber =
-        await database.reference().child('version').once();
+        await globals.database.reference().child('version').once();
 
     /// Get the version number of the solar charger
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    DataSnapshot versionNumber =
-        await database.reference().child('users/${user.uid}/version').once();
+    DataSnapshot versionNumber = await globals.database
+        .reference()
+        .child('users/${globals.uid}/version')
+        .once();
 
     if (latestVersionNumber.value > versionNumber.value) {
       print('Update is available!');
@@ -439,7 +458,7 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
           new Text('Current version: v${versionNumber.value}'),
           new FlatButton(
               onPressed: () {
-                updateDSCFirmware(user.uid, versionNumber.value);
+                updateDSCFirmware(globals.uid, versionNumber.value);
               },
               child: new Text(
                   'Update to v${latestVersionNumber.value} available. Click to continue'))
@@ -461,15 +480,12 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
   }
 
   void _submitNameButtonPressed() async {
-
     FocusScope.of(context).requestFocus(new FocusNode());
 
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-
-    database
+    globals.database
         .reference()
         .child('users')
-        .child(user.uid)
+        .child(globals.uid)
         .child('user_info')
         .update({'nickname': name});
 
@@ -478,17 +494,15 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
   }
 
   void getCurrentSystemName() async {
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-
-    database
+    globals.database
         .reference()
         .child('users')
-        .child(user.uid)
+        .child(globals.uid)
         .child('user_info')
         .child('nickname')
         .onValue
         .listen((Event event) {
-          /// Todo: needs work
+      /// Todo: needs work
       DataSnapshot currentSystemNameSnapshot = event.snapshot;
       if (currentSystemNameSnapshot.value == null) {
         currentSystemName = 'No name currently set!';
@@ -502,12 +516,10 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
   }
 
   void authenticationRequiredChanged(newAuthenticationRequirement) {
-    FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
-      database
-          .reference()
-          .child('users/${user.uid}/evc_inputs/charging_modes')
-          .update({'authentication_required': newAuthenticationRequirement});
-    });
+    globals.database
+        .reference()
+        .child('users/${globals.uid}/evc_inputs/charging_modes')
+        .update({'authentication_required': newAuthenticationRequirement});
 
     setState(() {
       authenticationRequired = newAuthenticationRequirement;
@@ -515,12 +527,10 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
   }
 
   void bufferAggressivenessChanged(newBufferAggressiveness) {
-    FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
-      database
-          .reference()
-          .child('users/${user.uid}/evc_inputs/')
-          .update({'buffer_aggro_mode': newBufferAggressiveness});
-    });
+    globals.database
+        .reference()
+        .child('users/${globals.uid}/evc_inputs/')
+        .update({'buffer_aggro_mode': newBufferAggressiveness});
 
     setState(() {
       bufferAggroMode = newBufferAggressiveness;
@@ -528,12 +538,10 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
   }
 
   void chargingModeChanged(newChargingMode) {
-    FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
-      database
-          .reference()
-          .child('users/${user.uid}/evc_inputs/charging_modes/')
-          .update({'single_charging_mode': newChargingMode});
-    });
+    globals.database
+        .reference()
+        .child('users/${globals.uid}/evc_inputs/charging_modes/')
+        .update({'single_charging_mode': newChargingMode});
 
     setState(() {
       singleChargingMode = newChargingMode;
@@ -541,12 +549,10 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
   }
 
   void getEVInputs() async {
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    String uid = user.uid;
-
-    _singleChargingModeSubscription = database
+    _singleChargingModeSubscription = globals.database
         .reference()
-        .child('users/$uid/evc_inputs/charging_modes/single_charging_mode')
+        .child(
+            'users/${globals.uid}/evc_inputs/charging_modes/single_charging_mode')
         .onValue
         .listen((Event event) {
       singleChargingMode = event.snapshot.value;
@@ -555,9 +561,9 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
       });
     });
 
-    _bufferAggroModeSubscription = database
+    _bufferAggroModeSubscription = globals.database
         .reference()
-        .child('users/$uid/evc_inputs/buffer_aggro_mode')
+        .child('users/${globals.uid}/evc_inputs/buffer_aggro_mode')
         .onValue
         .listen((Event event) {
       bufferAggroMode = event.snapshot.value;
@@ -566,9 +572,10 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
       });
     });
 
-    _authenticationRequiredSubscription = database
+    _authenticationRequiredSubscription = globals.database
         .reference()
-        .child('users/$uid/evc_inputs/charging_modes/authentication_required')
+        .child(
+            'users/${globals.uid}/evc_inputs/charging_modes/authentication_required')
         .onValue
         .listen((Event event) {
       authenticationRequired = event.snapshot.value.toString();
@@ -586,15 +593,6 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
     setState(() {});
   }
 
-  void getUserDetails() {
-    FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
-      setState(() {
-        _displayName = user.displayName;
-        _displayEmail = user.email;
-      });
-    });
-  }
-
   Future<Null> _signOut() async {
     await FirebaseAuth.instance.signOut();
     print('Signed out');
@@ -606,8 +604,6 @@ class _SolarChargerSettingsState extends State<SolarChargerSettings> {
   void initState() {
     super.initState();
 
-    getUserDetails();
-    database = new FirebaseDatabase();
     getEVInputs();
     getCurrentSystemName();
   }
@@ -738,13 +734,9 @@ class _FactoryResetState extends State<FactoryReset> {
   }
 
   void _performFactoryReset() async {
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase();
-    String uid = user.uid;
-
-    database
+    globals.database
         .reference()
-        .child('users/$uid/evc_inputs/')
+        .child('users/${globals.uid}/evc_inputs/')
         .update({'factory_reset': true});
 
     _signOut();

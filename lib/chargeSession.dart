@@ -4,6 +4,8 @@ import 'dart:async';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'globals.dart' as globals;
+
 import 'package:charts_flutter/flutter.dart' as charts;
 import 'package:intl/intl.dart';
 
@@ -11,12 +13,10 @@ class ChargeSessionPage extends StatefulWidget {
   ChargeSessionPage(
       {Key key,
       @required this.chargerID,
-      @required this.database,
       @required this.latestChargingTimestamp})
       : super(key: key);
 
   final chargerID;
-  final database;
   final latestChargingTimestamp;
 
   @override
@@ -38,7 +38,6 @@ class _ChargeSessionPageState extends State<ChargeSessionPage> {
           children: <Widget>[
             new ChargeSessionLine(
               latestChargingTimestamp: widget.latestChargingTimestamp,
-              database: widget.database,
               chargerID: widget.chargerID,
             )
           ],
@@ -74,12 +73,10 @@ class ChargeSessionLine extends StatefulWidget {
   ChargeSessionLine(
       {Key key,
       @required this.chargerID,
-      @required this.database,
       @required this.latestChargingTimestamp})
       : super(key: key);
 
   final chargerID;
-  final database;
   final latestChargingTimestamp;
 
   @override
@@ -295,12 +292,8 @@ class _ChargeSessionLineState extends State<ChargeSessionLine> {
 
   /// This function grabs our current charge session data
   Future<Map> grabInitialChargeSessionData() async {
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase();
-    String uid = user.uid;
-
-    _chargingSessionRef = database.reference().child(
-        'users/$uid/charging_history/${widget.chargerID}/${widget.latestChargingTimestamp}');
+    _chargingSessionRef = globals.database.reference().child(
+        'users/${globals.uid}/charging_history/${widget.chargerID}/${widget.latestChargingTimestamp}');
 
     DataSnapshot chargeSessionSnapshot =
         await _chargingSessionRef.orderByKey().once();

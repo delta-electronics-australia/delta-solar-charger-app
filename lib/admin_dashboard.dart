@@ -1,24 +1,16 @@
 import 'package:flutter/material.dart';
-import 'dart:io' show Platform;
 import 'dart:io';
 import 'dart:async';
-import 'dart:math';
+
+import 'globals.dart' as globals;
 
 import 'package:firebase_database/firebase_database.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:smart_charging_app/dashboard.dart';
-import 'package:smart_charging_app/liveDataStream.dart';
-import 'package:smart_charging_app/solarChargerSettings.dart';
-import 'package:smart_charging_app/chargeSession.dart';
-import 'package:smart_charging_app/charging_archive.dart';
-import 'package:smart_charging_app/inverter_archive.dart';
-import 'package:smart_charging_app/charger_info.dart';
 
 import 'package:charts_flutter/flutter.dart' as charts;
 import 'package:intl/intl.dart';
-import 'package:auto_size_text/auto_size_text.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -30,13 +22,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
   var _headingFont = new TextStyle(fontSize: 20.0);
   var _valueFont = new TextStyle(fontSize: 30.0);
 
-  bool isAdminAccount = true;
-
   bool loadingData = true;
-
-  /// Initialize the strings that will define our display name and email
-  String _displayName = "";
-  String _displayEmail = "";
 
   /// Initialize the current back press time
   DateTime currentBackPressTime = DateTime.now().subtract(Duration(seconds: 3));
@@ -83,90 +69,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
             drawer: new Drawer(
                 child: ListView(children: <Widget>[
               UserAccountsDrawerHeader(
-                accountName: Text(_displayName),
-                accountEmail: Text(_displayEmail),
+                accountName: Text(globals.displayName),
+                accountEmail: Text(globals.displayEmail),
                 decoration: new BoxDecoration(color: Colors.blue),
               ),
-              isAdminAccount
-                  ? ListView(
-                      shrinkWrap: true,
-                      physics: NeverScrollableScrollPhysics(),
-                      children: <Widget>[
-                        ListTile(
-                          leading: const Icon(Icons.supervisor_account),
-                          title: const Text('Admin Dashboard'),
-                          onTap: () {
-                            Navigator.of(context).pop();
-                          },
-                        ),
-                        new Divider()
-                      ],
+              globals.isAdmin
+                  ? ListTile(
+                      leading: const Icon(Icons.supervisor_account),
+                      title: const Text('Admin Dashboard'),
+                      onTap: () {
+                        Navigator.of(context).pop();
+                      },
                     )
                   : new Container(),
-              ListTile(
-                leading: const Icon(Icons.dashboard),
-                title: const Text('Dashboard'),
-                onTap: () {
-                  var route = new MaterialPageRoute(
-                      builder: (BuildContext context) => new Dashboard());
-                  Navigator.of(context).pop();
-                  Navigator.of(context).push(route);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.show_chart),
-                title: const Text('Live System Data'),
-                onTap: () {
-                  var route = new MaterialPageRoute(
-                      builder: (BuildContext context) => new DataStreamPage1());
-                  Navigator.of(context).pop();
-                  Navigator.of(context).push(route);
-                },
-              ),
-              Divider(),
-              ListTile(
-                leading: const Icon(Icons.unarchive),
-                title: const Text('System Archive'),
-                onTap: () {
-                  var route = new MaterialPageRoute(
-                      builder: (BuildContext context) => new InverterArchive());
-                  Navigator.of(context).pop();
-                  Navigator.of(context).push(route);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.offline_bolt),
-                title: const Text('Charging Session Archive'),
-                onTap: () {
-                  var route = new MaterialPageRoute(
-                      builder: (BuildContext context) => new ChargingArchive());
-                  Navigator.of(context).pop();
-                  Navigator.of(context).push(route);
-                },
-              ),
-              Divider(),
-              ListTile(
-                leading: const Icon(Icons.power),
-                title: Text('Connected Chargers'),
-                onTap: () {
-                  var route = new MaterialPageRoute(
-                      builder: (BuildContext context) => new ChargerInfo());
-                  Navigator.of(context).pop();
-                  Navigator.of(context).push(route);
-                },
-              ),
-              Divider(),
-              ListTile(
-                leading: const Icon(Icons.settings),
-                title: Text('Change Solar Charging Settings'),
-                onTap: () {
-                  var route = new MaterialPageRoute(
-                      builder: (BuildContext context) =>
-                          new SolarChargerSettings());
-                  Navigator.of(context).pop();
-                  Navigator.of(context).push(route);
-                },
-              ),
               Divider(),
               ListTile(
                 title: Text('Sign Out'),
@@ -215,24 +130,37 @@ class _AdminDashboardState extends State<AdminDashboard> {
                                 });
                           },
                         ),
-                        new Card(
-                          child: new Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              new ListTile(
-                                  title: new Center(
-                                      child: new Text(
-                                "Total Energy Consumed Today",
-                                style: _headingFont,
-                              ))),
-                              new ListTile(
-                                  title: new Center(
-                                      child: new Text(
-                                "${summedLiveAnalytics['ac2p_t']}",
-                                style: _valueFont,
-                              ))),
-                            ],
+                        new GestureDetector(
+                          child: new Card(
+                            child: new Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                new ListTile(
+                                    title: new Center(
+                                        child: new Text(
+                                  "Total Energy Consumed Today",
+                                  style: _headingFont,
+                                ))),
+                                new ListTile(
+                                    title: new Center(
+                                        child: new Text(
+                                  "${summedLiveAnalytics['ac2p_t']}",
+                                  style: _valueFont,
+                                ))),
+                              ],
+                            ),
                           ),
+                          onLongPress: () {
+                            showDialog(
+                                context: context,
+                                builder: (builder) {
+                                  return new AnalyticPieDialog(
+                                    analyticName: 'energy_consumed',
+                                    linkedUIDMap: linkedUIDsMap,
+                                    adminUIDMap: adminUIDMap,
+                                  );
+                                });
+                          },
                         ),
                         new Card(
                           child: new Column(
@@ -287,19 +215,16 @@ class _AdminDashboardState extends State<AdminDashboard> {
   void grabSystemStatus() async {
     /// This function grabs all system statuses
 
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase();
-    String uid = user.uid;
-
     DateFormat todayDateFormat = new DateFormat('yyyy-MM-dd');
 
     /// First clear our existing statusTiles
     listOfSystemStatusTiles.clear();
 
     /// Now grab the status of the admin UID
-    DataSnapshot latestSnapshot = await database
+    DataSnapshot latestSnapshot = await globals.database
         .reference()
-        .child('users/$uid/history/${todayDateFormat.format(DateTime.now())}')
+        .child(
+            'users/${globals.adminUID}/history/${todayDateFormat.format(DateTime.now())}')
         .limitToLast(1)
         .once();
 
@@ -310,19 +235,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
 
     /// Now we can use this to compare to see if there has been any update in the past 15 minutes
     if ((DateTime.now().difference(latestDateTime).inMinutes) > 15) {
-      adminUIDMap[uid]['alive'] = false;
+      adminUIDMap[globals.adminUID]['alive'] = false;
     } else {
-      adminUIDMap[uid]['alive'] = true;
+      adminUIDMap[globals.adminUID]['alive'] = true;
     }
 
     /// Now we have to create the list of system status tiles
     listOfSystemStatusTiles.add(new ListTile(
-      key: new ObjectKey(uid),
+      key: new ObjectKey(globals.adminUID),
       leading: new Padding(
         padding: const EdgeInsets.only(right: 10, top: 5),
         child: new Container(
           child: new Material(
-            color: adminUIDMap[uid]['alive'] ? Colors.green : Colors.red,
+            color: adminUIDMap[globals.adminUID]['alive']
+                ? Colors.green
+                : Colors.red,
             type: MaterialType.circle,
             child: new Container(
               width: 12,
@@ -332,20 +259,21 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
         ),
       ),
-      title: new Text(adminUIDMap[uid]['name']),
+      title: new Text(adminUIDMap[globals.adminUID]['name']),
       onTap: () {
         showModalBottomSheet(
             context: context,
             builder: (builder) {
               return new SystemInfoModal(
-                  uid: uid, name: adminUIDMap[uid]['name']);
+                  uid: globals.adminUID,
+                  name: adminUIDMap[globals.adminUID]['name']);
             });
       },
     ));
 
     /// Now grab the status of all of the linked UIDs
     for (String linkedUID in linkedUIDsMap.keys.toList()) {
-      DataSnapshot latestSnapshot = await database
+      DataSnapshot latestSnapshot = await globals.database
           .reference()
           .child(
               'users/$linkedUID/history/${todayDateFormat.format(DateTime.now())}')
@@ -397,16 +325,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   void grabAggregateAnalytics() async {
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase();
-    String uid = user.uid;
-
     /// First start listeners with our linked UIDs
     for (String linkedUID in linkedUIDsMap.keys.toList()) {
       liveAnalyticsMap[linkedUID] = {};
 
       /// Start a listener with our linked UID
-      linkedUIDsMap[linkedUID]['analyticsSubscription'] = database
+      linkedUIDsMap[linkedUID]['analyticsSubscription'] = globals.database
           .reference()
           .child('users/$linkedUID/analytics/live_analytics')
           .onValue
@@ -429,24 +353,26 @@ class _AdminDashboardState extends State<AdminDashboard> {
       });
     }
 
-    liveAnalyticsMap[uid] = {};
+    liveAnalyticsMap[globals.adminUID] = {};
 
     /// Then start a listener with our admin UID
-    _adminAnalyticsSubscription = database
+    _adminAnalyticsSubscription = globals.database
         .reference()
-        .child('users/$uid/analytics/live_analytics')
+        .child('users/${globals.adminUID}/analytics/live_analytics')
         .onValue
         .listen((Event event) {
       /// Now add all of the new information into the liveAnalyticsMap under
       Map snapshot = event.snapshot.value;
-      liveAnalyticsMap[uid]['btp_charged_t'] = (snapshot['btp_charged_t'] * -1);
-      liveAnalyticsMap[uid]['btp_consumed_t'] = snapshot['btp_consumed_t'];
-      liveAnalyticsMap[uid]['dcp_t'] = snapshot['dcp_t'];
-      liveAnalyticsMap[uid]['utility_p_export_t'] =
+      liveAnalyticsMap[globals.adminUID]['btp_charged_t'] =
+          (snapshot['btp_charged_t'] * -1);
+      liveAnalyticsMap[globals.adminUID]['btp_consumed_t'] =
+          snapshot['btp_consumed_t'];
+      liveAnalyticsMap[globals.adminUID]['dcp_t'] = snapshot['dcp_t'];
+      liveAnalyticsMap[globals.adminUID]['utility_p_export_t'] =
           snapshot['utility_p_export_t'];
-      liveAnalyticsMap[uid]['utility_p_import_t'] =
+      liveAnalyticsMap[globals.adminUID]['utility_p_import_t'] =
           (snapshot['utility_p_import_t'] * -1);
-      liveAnalyticsMap[uid]['ac2p_t'] = (snapshot['ac2p_t']);
+      liveAnalyticsMap[globals.adminUID]['ac2p_t'] = (snapshot['ac2p_t']);
 
       lastUpdatedDatetime = snapshot['time'];
 
@@ -479,16 +405,12 @@ class _AdminDashboardState extends State<AdminDashboard> {
   }
 
   void grabLinkedUIDInfo() async {
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase();
-    String uid = user.uid;
-
     List linkedUIDsList = [];
 
     /// First get a list of all of our linked UIDs
-    _linkedUIDSubscription = database
+    _linkedUIDSubscription = globals.database
         .reference()
-        .child('users/$uid/user_info/linked_accounts')
+        .child('users/${globals.adminUID}/user_info/linked_accounts')
         .onValue
         .listen((Event event) async {
       killAllSubscriptions();
@@ -499,7 +421,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
       for (String linkedUID in linkedUIDsList) {
         linkedUIDsMap[linkedUID] = {};
 
-        DataSnapshot linkedUIDName = await database
+        DataSnapshot linkedUIDName = await globals.database
             .reference()
             .child('users/$linkedUID/user_info/nickname')
             .once();
@@ -508,13 +430,13 @@ class _AdminDashboardState extends State<AdminDashboard> {
       }
 
       /// Now get information about the admin UID
-      adminUIDMap[uid] = {};
-      DataSnapshot adminUIDName = await database
+      adminUIDMap[globals.adminUID] = {};
+      DataSnapshot adminUIDName = await globals.database
           .reference()
-          .child('users/$uid/user_info/nickname')
+          .child('users/${globals.adminUID}/user_info/nickname')
           .once();
 
-      adminUIDMap[uid]['name'] = adminUIDName.value;
+      adminUIDMap[globals.adminUID]['name'] = adminUIDName.value;
 
       /// Now grab all of our aggregate analytics (for the top cards)
       grabAggregateAnalytics();
@@ -526,28 +448,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
       _systemStatusTimer =
           new Timer.periodic(const Duration(minutes: 2), (Timer t) {
         grabSystemStatus();
-      });
-    });
-  }
-
-  void getUserDetails() {
-    FirebaseAuth.instance.currentUser().then((FirebaseUser user) async {
-      final FirebaseDatabase database = new FirebaseDatabase();
-      database
-          .reference()
-          .child('users/${user.uid}/user_info/account_type')
-          .once()
-          .then((DataSnapshot snapshot) {
-        if (snapshot.value == "admin") {
-          isAdminAccount = true;
-        } else {
-          isAdminAccount = false;
-        }
-      });
-
-      setState(() {
-        _displayName = user.displayName;
-        _displayEmail = user.email;
       });
     });
   }
@@ -576,7 +476,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
   @override
   void initState() {
     super.initState();
-    getUserDetails();
 
     grabLinkedUIDInfo();
 
@@ -616,13 +515,13 @@ class _SystemInfoModalState extends State<SystemInfoModal> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.all(15.0),
+      padding: const EdgeInsets.all(1.0),
       child: loadingData
           ? new Center(
               child: const Center(child: const CircularProgressIndicator()))
           : new ListView(
               shrinkWrap: true,
-              physics: NeverScrollableScrollPhysics(),
+//              physics: NeverScrollableScrollPhysics(),
               children: <Widget>[
                 new Padding(
                   padding: const EdgeInsets.all(8),
@@ -692,15 +591,28 @@ class _SystemInfoModalState extends State<SystemInfoModal> {
                       style: TextStyle(fontWeight: FontWeight.bold)),
                   trailing: new Text(systemInfo['btp_charged_t']),
                 ),
+                new RaisedButton(
+                  child: const Text('Go to Dashboard'),
+                  onPressed: () async {
+                    /// First define the uid that we will use for our dashboard
+                    globals.uid = widget.uid;
+
+                    /// Then define the system name we will use for the dashboard
+                    globals.getSystemName(widget.uid);
+                    var route = new MaterialPageRoute(
+                        builder: (BuildContext context) => new Dashboard(),
+                        settings: RouteSettings(name: '/Dashboard'));
+                    Navigator.of(context).pop();
+                    Navigator.of(context).push(route);
+                  },
+                )
               ],
             ),
     );
   }
 
   void getSystemInfo() async {
-    final FirebaseDatabase database = new FirebaseDatabase();
-
-    _systemAnalyticsSubscription = database
+    _systemAnalyticsSubscription = globals.database
         .reference()
         .child('users/${widget.uid}/analytics/live_analytics')
         .onValue
@@ -765,6 +677,8 @@ class _AnalyticPieDialogState extends State<AnalyticPieDialog> {
 
   ObjectKey analyticsPieChartKey;
 
+  String chartTitle;
+
   @override
   Widget build(BuildContext context) {
     return new SimpleDialog(
@@ -781,7 +695,7 @@ class _AnalyticPieDialogState extends State<AnalyticPieDialog> {
                   pieChartSeriesList,
                   animate: true,
                   behaviors: [
-                    new charts.ChartTitle('Solar Energy Breakdown (kWh)',
+                    new charts.ChartTitle(chartTitle,
                         behaviorPosition: charts.BehaviorPosition.top,
                         titleOutsideJustification:
                             charts.OutsideJustification.middleDrawArea),
@@ -828,22 +742,17 @@ class _AnalyticPieDialogState extends State<AnalyticPieDialog> {
     /// This function will grab all of the data we need to build a pie chart
     /// that breaks down the analytic name
 
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase();
-    String uid = user.uid;
-
     List<AnalyticsData> chartData = [
 //      new AnalyticsData(0, 100),
-//      new AnalyticsData(1, 75),
-//      new AnalyticsData(2, 25),
-//      new AnalyticsData(3, 5),
     ];
 
 //    DateFormat todayDateFormat = new DateFormat('yyyy-MM-dd');
 
     for (String linkedUID in widget.linkedUIDMap.keys.toList()) {
       if (widget.analyticName == "solar") {
-        DataSnapshot snapshot = await database
+        chartTitle = 'Solar Energy Breakdown (kWh)';
+
+        DataSnapshot snapshot = await globals.database
             .reference()
             .child('users/$linkedUID/analytics/live_analytics/dcp_t')
             .once();
@@ -852,18 +761,40 @@ class _AnalyticPieDialogState extends State<AnalyticPieDialog> {
             0,
             double.parse(snapshot.value.toStringAsFixed(2)),
             widget.linkedUIDMap[linkedUID]['name']));
+
+        snapshot = await globals.database
+            .reference()
+            .child('users/${globals.adminUID}/analytics/live_analytics/dcp_t')
+            .once();
+        print(snapshot.value);
+        chartData.add(new AnalyticsData(
+            1,
+            double.parse(snapshot.value.toStringAsFixed(2)),
+            widget.adminUIDMap[globals.adminUID]['name']));
+      } else if (widget.analyticName == "energy_consumed") {
+        chartTitle = 'Consumed Energy Breakdown (kWh)';
+
+        DataSnapshot snapshot = await globals.database
+            .reference()
+            .child('users/$linkedUID/analytics/live_analytics/ac2p_t')
+            .once();
+        print(snapshot.value);
+        chartData.add(new AnalyticsData(
+            0,
+            double.parse(snapshot.value.toStringAsFixed(2)),
+            widget.linkedUIDMap[linkedUID]['name']));
+
+        snapshot = await globals.database
+            .reference()
+            .child('users/${globals.adminUID}/analytics/live_analytics/ac2p_t')
+            .once();
+        print(snapshot.value);
+        chartData.add(new AnalyticsData(
+            1,
+            double.parse(snapshot.value.toStringAsFixed(2)),
+            widget.adminUIDMap[globals.adminUID]['name']));
       }
     }
-
-    DataSnapshot snapshot = await database
-        .reference()
-        .child('users/$uid/analytics/live_analytics/dcp_t')
-        .once();
-    print(snapshot.value);
-    chartData.add(new AnalyticsData(
-        1,
-        double.parse(snapshot.value.toStringAsFixed(2)),
-        widget.adminUIDMap[uid]['name']));
 
     pieChartSeriesList = [
       new charts.Series<AnalyticsData, double>(

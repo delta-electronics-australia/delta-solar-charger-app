@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'globals.dart' as globals;
+
 import 'package:smart_charging_app/solarChargerSettings.dart';
 import 'package:smart_charging_app/charging_archive.dart';
 import 'package:smart_charging_app/inverter_archive.dart';
@@ -19,10 +21,6 @@ class DataStreamPage1 extends StatefulWidget {
 class _DataStreamPage1State extends State<DataStreamPage1> {
   bool loadingData = true;
   var _headingFont = new TextStyle(fontSize: 20.0);
-
-  /// Initialize the strings that will define our display name and email
-  String _displayName = "";
-  String _displayEmail = "";
 
   DatabaseReference _historyRef;
   StreamSubscription<Event> _historyDataSubscription;
@@ -48,12 +46,34 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
         ),
         drawer: new Drawer(
             child: ListView(children: <Widget>[
-          UserAccountsDrawerHeader(
-            accountName: Text(_displayName),
-            accountEmail: Text(_displayEmail),
-//                currentAccountPicture: const CircleAvatar(),
-            decoration: new BoxDecoration(color: Colors.blue),
-          ),
+          globals.isAdmin
+              ? UserAccountsDrawerHeader(
+                  accountName:
+                      Text('Currently logged in as ${globals.systemName}'),
+                  decoration: new BoxDecoration(color: Colors.blue),
+                )
+              : UserAccountsDrawerHeader(
+                  accountName: Text(globals.displayName),
+                  accountEmail: Text(globals.displayEmail),
+                  decoration: new BoxDecoration(color: Colors.blue),
+                ),
+          globals.isAdmin
+              ? ListView(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  children: <Widget>[
+                    ListTile(
+                      leading: const Icon(Icons.supervisor_account),
+                      title: const Text('Admin Dashboard'),
+                      onTap: () {
+                        Navigator.popUntil(
+                            context, ModalRoute.withName('/AdminDashboard'));
+                      },
+                    ),
+                    new Divider()
+                  ],
+                )
+              : new Container(),
           ListTile(
             leading: const Icon(Icons.dashboard),
             title: Text('Dashboard'),
@@ -278,14 +298,12 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
   }
 
   Future<Map> grabInitialHistoryData() async {
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    final FirebaseDatabase database = new FirebaseDatabase();
-    String uid = user.uid;
-
     var dateFormatter = new DateFormat('yyyy-MM-dd');
     String currentDate = dateFormatter.format(new DateTime.now());
 
-    _historyRef = database.reference().child('users/$uid/history/$currentDate');
+    _historyRef = globals.database
+        .reference()
+        .child('users/${globals.uid}/history/$currentDate');
 
     var historySnapshot = await _historyRef.orderByKey().limitToLast(60).once();
 
@@ -366,21 +384,9 @@ class _DataStreamPage1State extends State<DataStreamPage1> {
     };
   }
 
-  getUserDetails() {
-    FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
-      setState(() {
-        _displayName = user.displayName;
-        _displayEmail = user.email;
-      });
-    });
-  }
-
   @override
   void initState() {
     super.initState();
-
-    /// This gets values for our Nav email/name
-    getUserDetails();
 
     initializeInverterCharts().then((dynamic _) {
       startInverterChartsListeners();

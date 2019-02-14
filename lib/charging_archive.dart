@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'globals.dart' as globals;
+
 import 'package:smart_charging_app/archivedChargingSession.dart';
 import 'package:smart_charging_app/inverter_archive.dart';
 import 'package:smart_charging_app/solarChargerSettings.dart';
@@ -21,18 +23,11 @@ class _ChargingArchiveState extends State<ChargingArchive> {
   bool loadingData = false;
   var _headingFont = new TextStyle(fontSize: 20.0);
 
-  /// Initialize the strings that will define our display name and email
-  String _displayName = "";
-  String _displayEmail = "";
-
   DatabaseReference _chargingHistoryAnalyticsRef;
 
   Map validDatesPayload;
 
   DateTime pickedDate;
-
-  FirebaseDatabase database;
-  String uid;
 
   /// Define the colour array for our live charts
   Map<String, charts.Color> colourArray = {
@@ -52,12 +47,34 @@ class _ChargingArchiveState extends State<ChargingArchive> {
         ),
         drawer: new Drawer(
             child: ListView(children: <Widget>[
-          UserAccountsDrawerHeader(
-            accountName: Text(_displayName),
-            accountEmail: Text(_displayEmail),
-//                currentAccountPicture: const CircleAvatar(),
-            decoration: new BoxDecoration(color: Colors.blue),
-          ),
+          globals.isAdmin
+              ? UserAccountsDrawerHeader(
+                  accountName:
+                      Text('Currently logged in as ${globals.systemName}'),
+                  decoration: new BoxDecoration(color: Colors.blue),
+                )
+              : UserAccountsDrawerHeader(
+                  accountName: Text(globals.displayName),
+                  accountEmail: Text(globals.displayEmail),
+                  decoration: new BoxDecoration(color: Colors.blue),
+                ),
+          globals.isAdmin
+              ? ListView(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  children: <Widget>[
+                    ListTile(
+                      leading: const Icon(Icons.supervisor_account),
+                      title: const Text('Admin Dashboard'),
+                      onTap: () {
+                        Navigator.popUntil(
+                            context, ModalRoute.withName('/AdminDashboard'));
+                      },
+                    ),
+                    new Divider()
+                  ],
+                )
+              : new Container(),
           ListTile(
             leading: const Icon(Icons.dashboard),
             title: Text('Dashboard'),
@@ -166,8 +183,7 @@ class _ChargingArchiveState extends State<ChargingArchive> {
                     : null,
                 new Divider(),
                 pickedDate != null
-                    ? new ChargeSessionCards(
-                        pickedDate: pickedDate, database: database, uid: uid)
+                    ? new ChargeSessionCards(pickedDate: pickedDate)
                     : null
               ].where(notNull).toList()))
             : new Center(
@@ -196,9 +212,9 @@ class _ChargingArchiveState extends State<ChargingArchive> {
   }
 
   Future<Map> getValidChargingDates() async {
-    _chargingHistoryAnalyticsRef = database
+    _chargingHistoryAnalyticsRef = globals.database
         .reference()
-        .child('users/$uid/analytics/charging_history_analytics');
+        .child('users/${globals.uid}/analytics/charging_history_analytics');
 
     var chargingHistoryKeysObject;
     DataSnapshot snapshot = await _chargingHistoryAnalyticsRef.once();
@@ -234,21 +250,7 @@ class _ChargingArchiveState extends State<ChargingArchive> {
         .pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
   }
 
-  getUserDetails() {
-    FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
-      setState(() {
-        _displayName = user.displayName;
-        _displayEmail = user.email;
-      });
-    });
-  }
-
   void startChargingArchive() async {
-    getUserDetails();
-    database = new FirebaseDatabase();
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    uid = user.uid;
-
     validDatesPayload = await getValidChargingDates();
     setState(() {});
   }
@@ -261,25 +263,18 @@ class _ChargingArchiveState extends State<ChargingArchive> {
 }
 
 class ChargeSessionCards extends StatefulWidget {
-  ChargeSessionCards(
-      {Key key,
-      @required this.pickedDate,
-      @required this.database,
-      @required this.uid})
-      : super(key: key);
+  ChargeSessionCards({
+    Key key,
+    @required this.pickedDate,
+  }) : super(key: key);
 
   final pickedDate;
-  final database;
-  final uid;
 
   @override
   _ChargeSessionCardsState createState() => _ChargeSessionCardsState();
 }
 
 class _ChargeSessionCardsState extends State<ChargeSessionCards> {
-  String uid;
-  FirebaseDatabase database;
-
   var _headingFont = new TextStyle(fontSize: 20.0);
 
   List<Widget> cardWidgetList = [];
@@ -305,10 +300,10 @@ class _ChargeSessionCardsState extends State<ChargeSessionCards> {
     String datePickedFormatted = dateFormatter.format(widget.pickedDate);
 
     for (String chargerID in evChargers) {
-      DataSnapshot chargingHistoryAnalyticsObject = await database
+      DataSnapshot chargingHistoryAnalyticsObject = await globals.database
           .reference()
           .child(
-              'users/$uid/analytics/charging_history_analytics/$chargerID/$datePickedFormatted')
+              'users/${globals.uid}/analytics/charging_history_analytics/$chargerID/$datePickedFormatted')
           .once();
 
       Map tempChargingAnalytics = chargingHistoryAnalyticsObject.value;
@@ -372,7 +367,6 @@ class _ChargeSessionCardsState extends State<ChargeSessionCards> {
                         chargerID: chargerID,
                         startDate: datePickedFormatted,
                         startTime: chargingTime,
-                        database: database,
                       ));
               Navigator.of(context).push(route);
 //              getChargingSession(chargerID, datePickedFormatted, chargingTime);
@@ -418,9 +412,9 @@ class _ChargeSessionCardsState extends State<ChargeSessionCards> {
 
   Future<List> getEVChargerList() async {
     /// This function gets a list of the current registered EV Chargers
-    DataSnapshot evChargersObject = await widget.database
+    DataSnapshot evChargersObject = await globals.database
         .reference()
-        .child('users/$uid/ev_chargers')
+        .child('users/${globals.uid}/ev_chargers')
         .once();
     return evChargersObject.value.keys.toList();
   }
@@ -429,8 +423,6 @@ class _ChargeSessionCardsState extends State<ChargeSessionCards> {
   void initState() {
     super.initState();
     print('Charging archive initialized');
-    uid = widget.uid;
-    database = widget.database;
     createChargeSessionCards();
   }
 

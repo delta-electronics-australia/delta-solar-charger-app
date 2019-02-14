@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
+
 import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
+import 'globals.dart' as globals;
 
 import 'package:smart_charging_app/liveDataStream.dart';
 import 'package:smart_charging_app/charging_archive.dart';
@@ -12,7 +15,6 @@ import 'package:smart_charging_app/charger_info.dart';
 
 import 'package:charts_flutter/flutter.dart' as charts;
 import 'package:intl/intl.dart';
-
 
 class InverterArchive extends StatefulWidget {
   @override
@@ -23,19 +25,12 @@ class _InverterArchiveState extends State<InverterArchive> {
   bool loadingData = false;
   var _headingFont = new TextStyle(fontSize: 20.0);
 
-  /// Initialize the strings that will define our display name and email
-  String _displayName = "";
-  String _displayEmail = "";
-
   DatabaseReference _inverterHistoryKeysRef;
 
   Map validDatesPayload;
 
   DateTime oldPickedDate;
   DateTime pickedDate;
-
-  FirebaseDatabase database;
-  String uid;
 
   /// Define the colour array for our live charts
   Map<String, charts.Color> colourArray = {
@@ -55,12 +50,34 @@ class _InverterArchiveState extends State<InverterArchive> {
         ),
         drawer: new Drawer(
             child: ListView(children: <Widget>[
-          UserAccountsDrawerHeader(
-            accountName: Text(_displayName),
-            accountEmail: Text(_displayEmail),
-//                currentAccountPicture: const CircleAvatar(),
-            decoration: new BoxDecoration(color: Colors.blue),
-          ),
+          globals.isAdmin
+              ? UserAccountsDrawerHeader(
+                  accountName:
+                      Text('Currently logged in as ${globals.systemName}'),
+                  decoration: new BoxDecoration(color: Colors.blue),
+                )
+              : UserAccountsDrawerHeader(
+                  accountName: Text(globals.displayName),
+                  accountEmail: Text(globals.displayEmail),
+                  decoration: new BoxDecoration(color: Colors.blue),
+                ),
+          globals.isAdmin
+              ? ListView(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  children: <Widget>[
+                    ListTile(
+                      leading: const Icon(Icons.supervisor_account),
+                      title: const Text('Admin Dashboard'),
+                      onTap: () {
+                        Navigator.popUntil(
+                            context, ModalRoute.withName('/AdminDashboard'));
+                      },
+                    ),
+                    new Divider()
+                  ],
+                )
+              : new Container(),
           ListTile(
             leading: const Icon(Icons.dashboard),
             title: Text('Dashboard'),
@@ -171,7 +188,7 @@ class _InverterArchiveState extends State<InverterArchive> {
                 new Divider(),
                 pickedDate != null
                     ? new SystemArchiveInformationWidgets(
-                        database: database, uid: uid, pickedDate: pickedDate)
+                        pickedDate: pickedDate)
                     : null
               ].where(notNull).toList()))
             : new Center(
@@ -210,8 +227,9 @@ class _InverterArchiveState extends State<InverterArchive> {
   }
 
   Future<Map> getValidChargingDates() async {
-    _inverterHistoryKeysRef =
-        database.reference().child('users/$uid/history_keys/');
+    _inverterHistoryKeysRef = globals.database
+        .reference()
+        .child('users/${globals.uid}/history_keys/');
 
     var inverterHistoryKeysObject;
     DataSnapshot snapshot = await _inverterHistoryKeysRef.once();
@@ -242,21 +260,7 @@ class _InverterArchiveState extends State<InverterArchive> {
         .pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
   }
 
-  getUserDetails() {
-    FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
-      setState(() {
-        _displayName = user.displayName;
-        _displayEmail = user.email;
-      });
-    });
-  }
-
   void startInverterArchivePage() async {
-    getUserDetails();
-    database = new FirebaseDatabase();
-    FirebaseUser user = await FirebaseAuth.instance.currentUser();
-    uid = user.uid;
-
     validDatesPayload = await getValidChargingDates();
     setState(() {});
   }
@@ -269,16 +273,12 @@ class _InverterArchiveState extends State<InverterArchive> {
 }
 
 class SystemArchiveInformationWidgets extends StatefulWidget {
-  SystemArchiveInformationWidgets(
-      {Key key,
-      @required this.pickedDate,
-      @required this.database,
-      @required this.uid})
-      : super(key: key);
+  SystemArchiveInformationWidgets({
+    Key key,
+    @required this.pickedDate,
+  }) : super(key: key);
 
   final pickedDate;
-  final database;
-  final uid;
 
   @override
   _SystemArchiveInformationWidgetsState createState() =>
@@ -287,9 +287,6 @@ class SystemArchiveInformationWidgets extends StatefulWidget {
 
 class _SystemArchiveInformationWidgetsState
     extends State<SystemArchiveInformationWidgets> {
-  String uid;
-  FirebaseDatabase database;
-
   Map inverterHistoryChartDataObject;
   Widget chartWidget;
 
@@ -510,8 +507,6 @@ class _SystemArchiveInformationWidgetsState
     super.initState();
 
     print('System archive initialized');
-    uid = widget.uid;
-    database = widget.database;
     createSystemArchiveWidgets();
   }
 }
