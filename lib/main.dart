@@ -17,7 +17,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return new MaterialApp(
-        title: 'Flutter Demo',
+        title: 'Delta Solar Charger App',
         theme: new ThemeData(
           primarySwatch: Colors.blue,
         ),
@@ -63,8 +63,36 @@ class _LandingPageState extends State<LandingPage> {
     print('Signed out');
   }
 
+  void initializePostLoginGlobals() async {
+    /// This function initializes all of our global variables needed to login
+    /// to an admin account
+
+    /// First we bring up the circular indicator
+    setState(() {
+      loggingIn = true;
+    });
+
+    /// Check if this account is an admin account
+    bool isAdmin = await globals.checkForAdminStatus();
+
+    /// Get the user details of this account
+    await globals.getUserDetails();
+
+    /// Now initialize all of our Firebase global variables
+    await globals.getFirebaseUID();
+
+    /// If the account is an admin account, then we go to the admin dashboard
+    if (isAdmin) {
+      Navigator.pushNamed(context, "/AdminDashboard");
+    } else {
+      Navigator.pushNamed(context, "/Dashboard");
+    }
+  }
+
   void _handleLogin() {
-    // Set loggingIn to true, so we have a circular progress icon
+    /// This function is run when the user presses the login button
+
+    /// Set loggingIn to true, so we have a circular progress icon
     setState(() {
       loggingIn = true;
     });
@@ -72,21 +100,11 @@ class _LandingPageState extends State<LandingPage> {
     user.email = email;
     user.password = password;
 
+    /// Now we verify the user using the inputted credentials
     userAuth.verifyUser(user).then((onValue) async {
       print(onValue);
       if (onValue == "Login Successful") {
-        loggingIn = false;
-
-        bool isAdmin = await globals.checkForAdminStatus();
-        await globals.getUserDetails();
-        await globals.getFirebaseUID();
-
-        if (isAdmin) {
-          print('admin!!!!');
-          Navigator.pushNamed(context, "/AdminDashboard");
-        } else {
-          Navigator.pushNamed(context, "/Dashboard");
-        }
+        initializePostLoginGlobals();
       } else {
         showDialog(
             context: context,
@@ -122,7 +140,6 @@ class _LandingPageState extends State<LandingPage> {
         ),
         body: new Container(
           padding: const EdgeInsets.only(left: 15.0, right: 15.0),
-//          color: Colors.blue,
 
           child: StreamBuilder(
               stream: FirebaseAuth.instance.onAuthStateChanged,
@@ -193,39 +210,30 @@ class _LandingPageState extends State<LandingPage> {
                                       ),
                                     ]));
                     } else {
-                      return new Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          new RaisedButton(
-                            onPressed: () async {
-                              bool isAdmin =
-                                  await globals.checkForAdminStatus();
-                              await globals.getUserDetails();
-                              await globals.getFirebaseUID();
-
-                              if (isAdmin) {
-                                print('admin!!!!');
-                                Navigator.pushNamed(context, "/AdminDashboard");
-                              } else {
-                                Navigator.pushNamed(context, "/Dashboard");
-                              }
-                            },
-                            child: new Text(
-                                'Login as ${snapshot.data.displayName}'),
-                          ),
-                          new Align(
-                            alignment: Alignment.bottomCenter,
-                            child: new FlatButton(
-                                onPressed: () {
-                                  _email.clear();
-                                  _pass.clear();
-                                  _signOut();
-                                },
-                                child: const Text(
-                                    'Not you? Log into a different account')),
-                          )
-                        ],
-                      );
+                      return loggingIn
+                          ? const Center(
+                              child: const CircularProgressIndicator())
+                          : new Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: <Widget>[
+                                new RaisedButton(
+                                  onPressed: initializePostLoginGlobals,
+                                  child: new Text(
+                                      'Login as ${snapshot.data.displayName}'),
+                                ),
+                                new Align(
+                                  alignment: Alignment.bottomCenter,
+                                  child: new FlatButton(
+                                      onPressed: () {
+                                        _email.clear();
+                                        _pass.clear();
+                                        _signOut();
+                                      },
+                                      child: const Text(
+                                          'Not you? Log into a different account')),
+                                )
+                              ],
+                            );
                     }
                 }
               }),

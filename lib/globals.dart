@@ -15,7 +15,8 @@ String uid;
 String adminUID;
 
 Future<bool> checkForAdminStatus() async {
-  print('Im in check for adminstatus');
+  /// This function checks if the currently logged in account is a
+  /// Solar Charger admin account and returns a boolean.
 
   FirebaseUser user = await FirebaseAuth.instance.currentUser();
 
@@ -25,8 +26,8 @@ Future<bool> checkForAdminStatus() async {
       .child('users/${user.uid}/user_info/account_type')
       .once();
 
+  /// If the account_type is admin then we set the admin global variable to true
   if (snapshot.value == "admin") {
-    print('isAdmin is set to true now');
     isAdmin = true;
   } else {
     isAdmin = false;
@@ -36,6 +37,9 @@ Future<bool> checkForAdminStatus() async {
 }
 
 Future<Null> getUserDetails() async {
+  /// This function gets the details of the currently logged in account so that
+  /// we don't have to retrieve it on every page
+
   FirebaseUser user = await FirebaseAuth.instance.currentUser();
 
   displayName = user.displayName;
@@ -45,6 +49,8 @@ Future<Null> getUserDetails() async {
 }
 
 Future<Null> getFirebaseUID() async {
+  /// Initializes the uid and database global variables
+
   FirebaseUser user = await FirebaseAuth.instance.currentUser();
   database = new FirebaseDatabase();
   uid = adminUID = user.uid;
@@ -53,6 +59,8 @@ Future<Null> getFirebaseUID() async {
 }
 
 Future<Null> getSystemName(uid) async {
+  /// This function takes in a uid and grabs the name of the system
+
   database = new FirebaseDatabase();
 
   DataSnapshot currentSystemNameSnapshot = await database
@@ -63,7 +71,9 @@ Future<Null> getSystemName(uid) async {
       .child('nickname')
       .once();
 
-  print(currentSystemNameSnapshot.value);
+  /// If the name does not yet exist, then we will use the email as the
+  /// system name
+
   if (currentSystemNameSnapshot.value == null) {
     systemName = displayEmail.split('@')[0];
   } else {

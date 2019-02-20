@@ -228,6 +228,14 @@ class _AdminDashboardState extends State<AdminDashboard> {
         .limitToLast(1)
         .once();
 
+//    /// Check if there are any charging chargers
+//    DataSnapshot chargingChargers = await globals.database
+//        .reference()
+//        .child('users/${globals.adminUID}/evc_inputs/charging')
+//        .once();
+//
+//    chargingChargers.value;
+
     /// Convert the latest history payload into a DateTime object
     DateTime latestDateTime = DateTime.parse(
         '${todayDateFormat.format(DateTime.now())}T${latestSnapshot.value[latestSnapshot.value.keys.toList()[0]]['time']}');
@@ -260,6 +268,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
         ),
       ),
       title: new Text(adminUIDMap[globals.adminUID]['name']),
+      trailing: new TrailingActiveChargerCount(uid: globals.adminUID),
       onTap: () {
         showModalBottomSheet(
             context: context,
@@ -311,6 +320,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
           ),
         ),
         title: new Text(linkedUIDsMap[linkedUID]['name']),
+        trailing: new TrailingActiveChargerCount(uid: linkedUID),
         onTap: () {
           showModalBottomSheet(
               context: context,
@@ -478,8 +488,6 @@ class _AdminDashboardState extends State<AdminDashboard> {
     super.initState();
 
     grabLinkedUIDInfo();
-
-//    grabSystemStatus();
   }
 
   @override
@@ -675,8 +683,6 @@ class _AnalyticPieDialogState extends State<AnalyticPieDialog> {
   String selectedAnalyticsData;
   String selectedAnalyticsDataLabel;
 
-  ObjectKey analyticsPieChartKey;
-
   String chartTitle;
 
   @override
@@ -696,7 +702,9 @@ class _AnalyticPieDialogState extends State<AnalyticPieDialog> {
                   animate: true,
                   behaviors: [
                     new charts.ChartTitle(chartTitle,
+                        maxWidthStrategy: charts.MaxWidthStrategy.truncate,
                         behaviorPosition: charts.BehaviorPosition.top,
+                        subTitle: '(kWh)',
                         titleOutsideJustification:
                             charts.OutsideJustification.middleDrawArea),
                     new charts.SelectNearest(),
@@ -704,26 +712,25 @@ class _AnalyticPieDialogState extends State<AnalyticPieDialog> {
                   ],
                   defaultRenderer: new charts.ArcRendererConfig(
                       arcRendererDecorators: [new charts.ArcLabelDecorator()]),
-//                  selectionModels: [
-//                    new charts.SelectionModelConfig(
-//                      type: charts.SelectionModelType.info,
-//                      changedListener: _onSelectionChanged,
-//                    )
-//                  ],
+                  selectionModels: [
+                    new charts.SelectionModelConfig(
+                      type: charts.SelectionModelType.info,
+                      changedListener: _onSelectionChanged,
+                    )
+                  ],
                 ),
-                key: analyticsPieChartKey,
               ),
-              selectedAnalyticsData == null
-                  ? new ListTile(
-                      title: new Text(
-                        "Please click the pie chart",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                    )
-                  : new ListTile(
-                      title: new Text(selectedAnalyticsDataLabel),
-                    )
+//              selectedAnalyticsData == null
+//                  ? new ListTile(
+//                      title: new Text(
+//                        "Please click the pie chart",
+//                        textAlign: TextAlign.center,
+//                        style: TextStyle(fontWeight: FontWeight.bold),
+//                      ),
+//                    )
+//                  : new ListTile(
+//                      title: new Text(selectedAnalyticsDataLabel),
+//                    )
             ],
     );
   }
@@ -735,7 +742,7 @@ class _AnalyticPieDialogState extends State<AnalyticPieDialog> {
 
     selectedAnalyticsDataLabel = selectedDatum.first.datum.label;
     selectedAnalyticsData = selectedDatum.first.datum.value.toString();
-    setState(() {});
+//    setState(() {});
   }
 
   void grabAnalyticsBreakdown() async {
@@ -746,11 +753,9 @@ class _AnalyticPieDialogState extends State<AnalyticPieDialog> {
 //      new AnalyticsData(0, 100),
     ];
 
-//    DateFormat todayDateFormat = new DateFormat('yyyy-MM-dd');
-
     for (String linkedUID in widget.linkedUIDMap.keys.toList()) {
       if (widget.analyticName == "solar") {
-        chartTitle = 'Solar Energy Breakdown (kWh)';
+        chartTitle = 'Solar Energy Breakdown';
 
         DataSnapshot snapshot = await globals.database
             .reference()
@@ -772,7 +777,7 @@ class _AnalyticPieDialogState extends State<AnalyticPieDialog> {
             double.parse(snapshot.value.toStringAsFixed(2)),
             widget.adminUIDMap[globals.adminUID]['name']));
       } else if (widget.analyticName == "energy_consumed") {
-        chartTitle = 'Consumed Energy Breakdown (kWh)';
+        chartTitle = 'Consumed Energy Breakdown';
 
         DataSnapshot snapshot = await globals.database
             .reference()
@@ -808,9 +813,7 @@ class _AnalyticPieDialogState extends State<AnalyticPieDialog> {
             '${row.label} - ${row.value}',
       )
     ];
-    setState(() {
-      analyticsPieChartKey = new ObjectKey(widget.analyticName);
-    });
+    setState(() {});
   }
 
   @override
@@ -826,4 +829,96 @@ class AnalyticsData {
   final String label;
 
   AnalyticsData(this.date, this.value, this.label);
+}
+
+class TrailingActiveChargerCount extends StatefulWidget {
+  TrailingActiveChargerCount({Key key, @required this.uid}) : super(key: key);
+
+  final String uid;
+
+  @override
+  _TrailingActiveChargerCountState createState() =>
+      _TrailingActiveChargerCountState();
+}
+
+class _TrailingActiveChargerCountState
+    extends State<TrailingActiveChargerCount> {
+  /// Define the integer representing the number of active chargers we have
+  int numActiveChargers;
+
+  /// Define our subscription to the charging node
+  StreamSubscription chargingNodeSubscription;
+
+  @override
+  Widget build(BuildContext context) {
+    return numActiveChargers != null
+        ? new Text(convertNumChargersIntoString())
+        : new Text('loading...');
+  }
+
+  String convertNumChargersIntoString() {
+    /// This function takes the numActiveChargers that we have and returns
+    /// a string that is readable
+
+    String finalString;
+
+    if (numActiveChargers == 0) {
+      finalString = "No Chargers Active";
+    } else if (numActiveChargers == 1) {
+      finalString = "1 Charger Active";
+    } else {
+      finalString = "$numActiveChargers Chargers Active";
+    }
+
+    return finalString;
+  }
+
+  startActiveChargerListener() async {
+    /// This function will listen to how many active chargers there are
+
+    chargingNodeSubscription = globals.database
+        .reference()
+        .child('users/${widget.uid}/evc_inputs/charging')
+        .onValue
+        .listen((Event event) {
+      DataSnapshot chargingSnapshot = event.snapshot;
+
+      /// Reset the number of active chargers
+      numActiveChargers = 0;
+
+      Map chargingNode = chargingSnapshot.value;
+
+      for (String chargerID in chargingNode.keys.toList(growable: false)) {
+        if (chargingNode[chargerID] != false) {
+          numActiveChargers += 1;
+        }
+      }
+
+      setState(() {});
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    startActiveChargerListener();
+  }
+
+  @override
+  void didUpdateWidget(TrailingActiveChargerCount oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    numActiveChargers = null;
+    startActiveChargerListener();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+
+    if (chargingNodeSubscription != null) {
+      chargingNodeSubscription.cancel();
+    }
+  }
 }
