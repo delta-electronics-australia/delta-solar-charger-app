@@ -431,7 +431,8 @@ class _SystemArchiveInformationWidgetsState
     var idToken = await user.getIdToken();
     Map requestPayload = {
       "date": dateFormatter.format(widget.pickedDate),
-      "idToken": idToken
+      "idToken": idToken,
+      "uid": globals.uid
     };
 
     var url = "http://203.32.104.46/delta_dashboard/archive_request";

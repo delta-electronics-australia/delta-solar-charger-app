@@ -13,6 +13,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:smart_charging_app/admin_dashboard.dart';
 import 'package:smart_charging_app/liveDataStream.dart';
 import 'package:smart_charging_app/solarChargerSettings.dart';
+import 'package:smart_charging_app/solarChargerSettings2.dart';
 import 'package:smart_charging_app/chargeSession.dart';
 import 'package:smart_charging_app/charging_archive.dart';
 import 'package:smart_charging_app/inverter_archive.dart';
@@ -230,7 +231,7 @@ class _DashboardState extends State<Dashboard> {
                 onTap: () {
                   var route = new MaterialPageRoute(
                       builder: (BuildContext context) =>
-                          new SolarChargerSettings());
+                          new SolarChargerSettings2());
                   Navigator.of(context).pop();
                   Navigator.of(context).push(route);
                 },
