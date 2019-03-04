@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
-import 'dart:io' show Platform;
-import 'dart:io';
 import 'dart:async';
 
 import 'globals.dart' as globals;
 
 import 'package:firebase_database/firebase_database.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:vibration/vibration.dart';
@@ -15,24 +12,6 @@ import 'package:smart_charging_app/liveDataStream.dart';
 import 'package:smart_charging_app/solarChargerSettings.dart';
 import 'package:smart_charging_app/charging_archive.dart';
 import 'package:smart_charging_app/inverter_archive.dart';
-
-Future<FirebaseApp> main() async {
-  final FirebaseApp app = await FirebaseApp.configure(
-    name: 'smart-charging-app',
-    options: Platform.isIOS
-        ? const FirebaseOptions(
-            googleAppID: '1:297855924061:ios:c6de2b69b03a5be8',
-            gcmSenderID: '297855924061',
-            databaseURL: 'https://smart-charging-app.firebaseio.com/',
-          )
-        : const FirebaseOptions(
-            googleAppID: '1:896921007938:android:2be6175bd778747f',
-            apiKey: 'AIzaSyCaxTOBofd7qrnbas5gGsZcuvy_zNSi_ik',
-            databaseURL: 'https://smart-charging-app.firebaseio.com/',
-          ),
-  );
-  return app;
-}
 
 class ChargerInfo extends StatefulWidget {
   @override

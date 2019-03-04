@@ -168,7 +168,7 @@ class _AdminDashboardState extends State<AdminDashboard> {
                             children: <Widget>[
                               new ExpansionTile(
                                 title: Text(
-                                  'Systems Overview',
+                                  'Linked Systems Overview',
                                   textAlign: TextAlign.center,
                                   style: _headingFont,
                                 ),
@@ -228,24 +228,19 @@ class _AdminDashboardState extends State<AdminDashboard> {
         .limitToLast(1)
         .once();
 
-//    /// Check if there are any charging chargers
-//    DataSnapshot chargingChargers = await globals.database
-//        .reference()
-//        .child('users/${globals.adminUID}/evc_inputs/charging')
-//        .once();
-//
-//    chargingChargers.value;
+    if (latestSnapshot.value != null) {
+      /// Convert the latest history payload into a DateTime object
+      DateTime latestDateTime = DateTime.parse(
+          '${todayDateFormat.format(DateTime.now())}T${latestSnapshot.value[latestSnapshot.value.keys.toList()[0]]['time']}');
 
-    /// Convert the latest history payload into a DateTime object
-    DateTime latestDateTime = DateTime.parse(
-        '${todayDateFormat.format(DateTime.now())}T${latestSnapshot.value[latestSnapshot.value.keys.toList()[0]]['time']}');
-    print(latestDateTime);
-
-    /// Now we can use this to compare to see if there has been any update in the past 15 minutes
-    if ((DateTime.now().difference(latestDateTime).inMinutes) > 15) {
-      adminUIDMap[globals.adminUID]['alive'] = false;
+      /// Now we can use this to compare to see if there has been any update in the past 15 minutes
+      if ((DateTime.now().difference(latestDateTime).inMinutes) > 15) {
+        adminUIDMap[globals.adminUID]['alive'] = false;
+      } else {
+        adminUIDMap[globals.adminUID]['alive'] = true;
+      }
     } else {
-      adminUIDMap[globals.adminUID]['alive'] = true;
+      adminUIDMap[globals.adminUID]['alive'] = false;
     }
 
     /// Now we have to create the list of system status tiles
@@ -289,16 +284,23 @@ class _AdminDashboardState extends State<AdminDashboard> {
           .limitToLast(1)
           .once();
 
-      /// Convert the latest history payload into a DateTime object
-      DateTime latestDateTime = DateTime.parse(
-          '${todayDateFormat.format(DateTime.now())}T${latestSnapshot.value[latestSnapshot.value.keys.toList()[0]]['time']}');
-      print(latestDateTime);
+      /// We have to see if there is any information from today
+      if (latestSnapshot.value != null) {
+        /// Convert the latest history payload into a DateTime object
+        DateTime latestDateTime = DateTime.parse(
+            '${todayDateFormat.format(DateTime.now())}T${latestSnapshot.value[latestSnapshot.value.keys.toList()[0]]['time']}');
 
-      /// Now we can use this to compare to see if there has been any update in the past 15 minutes
-      if ((DateTime.now().difference(latestDateTime).inMinutes) > 15) {
+        /// Now we can use this to compare to see if there has been any update in the past 15 minutes
+        if ((DateTime.now().difference(latestDateTime).inMinutes) > 15) {
+          linkedUIDsMap[linkedUID]['alive'] = false;
+        } else {
+          linkedUIDsMap[linkedUID]['alive'] = true;
+        }
+      }
+
+      /// If there isn't, then we have to say that alive is false
+      else {
         linkedUIDsMap[linkedUID]['alive'] = false;
-      } else {
-        linkedUIDsMap[linkedUID]['alive'] = true;
       }
 
       /// Now finally add these systems into tiles
@@ -514,11 +516,12 @@ class SystemInfoModal extends StatefulWidget {
 class _SystemInfoModalState extends State<SystemInfoModal> {
   bool loadingData = true;
 
-  bool systemOnline = true;
+  bool systemOnline = false;
 
   Map systemInfo = {};
 
   StreamSubscription _systemAnalyticsSubscription;
+  Timer _systemStatusTimer;
 
   @override
   Widget build(BuildContext context) {
@@ -529,7 +532,6 @@ class _SystemInfoModalState extends State<SystemInfoModal> {
               child: const Center(child: const CircularProgressIndicator()))
           : new ListView(
               shrinkWrap: true,
-//              physics: NeverScrollableScrollPhysics(),
               children: <Widget>[
                 new Padding(
                   padding: const EdgeInsets.all(8),
@@ -559,46 +561,59 @@ class _SystemInfoModalState extends State<SystemInfoModal> {
                     mainAxisAlignment: MainAxisAlignment.center,
                   ),
                 ),
-                new ListTile(
-                  leading: Icon(Icons.wb_sunny),
-                  title: const Text(
-                    'Solar Generated Today',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  trailing: new Text(systemInfo['dcp_t']),
-                ),
-                new ListTile(
-                  leading: Icon(Icons.power),
-                  title: const Text(
-                    'Energy Consumed Today',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  trailing: new Text(systemInfo['ac2p_t']),
-                ),
-                new ListTile(
-                  leading: Icon(Icons.import_export),
-                  title: const Text('Energy Exported Today',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  trailing: new Text(systemInfo['utility_p_export_t']),
-                ),
-                new ListTile(
-                  leading: Icon(Icons.import_export),
-                  title: const Text('Energy Imported Today',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  trailing: new Text(systemInfo['utility_p_import_t']),
-                ),
-                new ListTile(
-                  leading: Icon(Icons.battery_std),
-                  title: const Text('Battery Consumed Today',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  trailing: new Text(systemInfo['btp_consumed_t']),
-                ),
-                new ListTile(
-                  leading: Icon(Icons.battery_charging_full),
-                  title: const Text('Battery Charged Today',
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  trailing: new Text(systemInfo['btp_charged_t']),
-                ),
+                systemOnline
+                    ? new ListView(
+                        shrinkWrap: true,
+                        physics: NeverScrollableScrollPhysics(),
+                        children: <Widget>[
+                          new ListTile(
+                            leading: Icon(Icons.wb_sunny),
+                            title: const Text(
+                              'Solar Generated Today',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            trailing: new Text(systemInfo['dcp_t']),
+                          ),
+                          new ListTile(
+                            leading: Icon(Icons.power),
+                            title: const Text(
+                              'Energy Consumed Today',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            trailing: new Text(systemInfo['ac2p_t']),
+                          ),
+                          new ListTile(
+                            leading: Icon(Icons.import_export),
+                            title: const Text('Energy Exported Today',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                            trailing:
+                                new Text(systemInfo['utility_p_export_t']),
+                          ),
+                          new ListTile(
+                            leading: Icon(Icons.import_export),
+                            title: const Text('Energy Imported Today',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                            trailing:
+                                new Text(systemInfo['utility_p_import_t']),
+                          ),
+                          new ListTile(
+                            leading: Icon(Icons.battery_std),
+                            title: const Text('Battery Consumed Today',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                            trailing: new Text(systemInfo['btp_consumed_t']),
+                          ),
+                          new ListTile(
+                            leading: Icon(Icons.battery_charging_full),
+                            title: const Text('Battery Charged Today',
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                            trailing: new Text(systemInfo['btp_charged_t']),
+                          ),
+                        ],
+                      )
+                    : const Text(
+                        'System currently offline',
+                        textAlign: TextAlign.center,
+                      ),
                 new RaisedButton(
                   child: const Text('Go to Dashboard'),
                   onPressed: () async {
@@ -619,7 +634,42 @@ class _SystemInfoModalState extends State<SystemInfoModal> {
     );
   }
 
+  Future getSystemStatus() async {
+    /// This function will get the online/offline status of the charger
+
+    DateFormat todayDateFormat = new DateFormat('yyyy-MM-dd');
+
+    /// Now grab the status of the admin UID
+    DataSnapshot latestSnapshot = await globals.database
+        .reference()
+        .child(
+            'users/${widget.uid}/history/${todayDateFormat.format(DateTime.now())}')
+        .limitToLast(1)
+        .once();
+
+    if (latestSnapshot.value != null) {
+      /// Convert the latest history payload into a DateTime object
+      DateTime latestDateTime = DateTime.parse(
+          '${todayDateFormat.format(DateTime.now())}T${latestSnapshot.value[latestSnapshot.value.keys.toList()[0]]['time']}');
+
+      /// Now we can use this to compare to see if there has been any update in the past 15 minutes
+      if ((DateTime.now().difference(latestDateTime).inMinutes) > 15) {
+        systemOnline = false;
+      } else {
+        systemOnline = true;
+      }
+    }
+
+    /// If our snapshot is null, then we have no data for today. So our system is offline
+    else {
+      systemOnline = false;
+    }
+    setState(() {});
+  }
+
   void getSystemInfo() async {
+    await getSystemStatus();
+
     _systemAnalyticsSubscription = globals.database
         .reference()
         .child('users/${widget.uid}/analytics/live_analytics')
@@ -628,21 +678,46 @@ class _SystemInfoModalState extends State<SystemInfoModal> {
       /// Now add all of the new information into the liveAnalyticsMap
       /// under the linkedUID
       Map snapshot = event.snapshot.value;
-      systemInfo['btp_charged_t'] =
-          (snapshot['btp_charged_t'] * -1).toStringAsFixed(2) + 'kWh';
-      systemInfo['btp_consumed_t'] =
-          snapshot['btp_consumed_t'].toStringAsFixed(2) + 'kWh';
-      systemInfo['dcp_t'] = snapshot['dcp_t'].toStringAsFixed(2) + 'kWh';
-      systemInfo['utility_p_export_t'] =
-          snapshot['utility_p_export_t'].toStringAsFixed(2) + 'kWh';
-      systemInfo['utility_p_import_t'] =
-          (snapshot['utility_p_import_t'] * -1).toStringAsFixed(2) + 'kWh';
-      systemInfo['ac2p_t'] = (snapshot['ac2p_t']).toStringAsFixed(2) + 'kWh';
 
-//      lastUpdatedDatetime = snapshot['time'];
+      /// Get the time of the latest analytics payload
+      String lastUpdatedDatetime = snapshot['time'];
+      DateTime parsedLastUpdatedDatetime = DateTime.parse(lastUpdatedDatetime);
+
+      /// Now check if this time is on the same day as today
+      if (parsedLastUpdatedDatetime.year == DateTime.now().year &&
+          parsedLastUpdatedDatetime.month == DateTime.now().month &&
+          parsedLastUpdatedDatetime.day == DateTime.now().day) {
+        systemInfo['btp_charged_t'] =
+            (snapshot['btp_charged_t'] * -1).toStringAsFixed(2) + 'kWh';
+        systemInfo['btp_consumed_t'] =
+            snapshot['btp_consumed_t'].toStringAsFixed(2) + 'kWh';
+        systemInfo['dcp_t'] = snapshot['dcp_t'].toStringAsFixed(2) + 'kWh';
+        systemInfo['utility_p_export_t'] =
+            snapshot['utility_p_export_t'].toStringAsFixed(2) + 'kWh';
+        systemInfo['utility_p_import_t'] =
+            (snapshot['utility_p_import_t'] * -1).toStringAsFixed(2) + 'kWh';
+        systemInfo['ac2p_t'] = (snapshot['ac2p_t']).toStringAsFixed(2) + 'kWh';
+      }
+
+      /// If it is not, then we need to put the analytics as loading...
+      else {
+        systemInfo['btp_charged_t'] = 'loading...';
+        systemInfo['btp_consumed_t'] = 'loading...';
+        systemInfo['dcp_t'] = 'loading...';
+        systemInfo['utility_p_export_t'] = 'loading...';
+        systemInfo['utility_p_import_t'] = 'loading...';
+        systemInfo['ac2p_t'] = 'loading...';
+      }
+
       setState(() {
         loadingData = false;
       });
+    });
+
+    /// Now set a timer so that this function runs every 30 seconds
+    _systemStatusTimer =
+        new Timer.periodic(const Duration(seconds: 30), (Timer t) {
+      getSystemStatus();
     });
   }
 
@@ -657,6 +732,7 @@ class _SystemInfoModalState extends State<SystemInfoModal> {
   void dispose() {
     super.dispose();
     _systemAnalyticsSubscription.cancel();
+    _systemStatusTimer.cancel();
   }
 }
 
@@ -699,7 +775,7 @@ class _AnalyticPieDialogState extends State<AnalyticPieDialog> {
                 width: MediaQuery.of(context).size.width,
                 child: new charts.PieChart(
                   pieChartSeriesList,
-                  animate: true,
+                  animate: false,
                   behaviors: [
                     new charts.ChartTitle(chartTitle,
                         maxWidthStrategy: charts.MaxWidthStrategy.truncate,
@@ -720,29 +796,28 @@ class _AnalyticPieDialogState extends State<AnalyticPieDialog> {
                   ],
                 ),
               ),
-//              selectedAnalyticsData == null
-//                  ? new ListTile(
-//                      title: new Text(
-//                        "Please click the pie chart",
-//                        textAlign: TextAlign.center,
-//                        style: TextStyle(fontWeight: FontWeight.bold),
-//                      ),
-//                    )
-//                  : new ListTile(
-//                      title: new Text(selectedAnalyticsDataLabel),
-//                    )
+              selectedAnalyticsData == null
+                  ? new ListTile(
+                      title: new Text(
+                        "Please click the pie chart",
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                    )
+                  : new ListTile(
+                      title: new Text(selectedAnalyticsDataLabel),
+                      trailing: new Text(selectedAnalyticsData),
+                    )
             ],
     );
   }
 
   _onSelectionChanged(charts.SelectionModel model) {
     final selectedDatum = model.selectedDatum;
-//    print(selectedDatum.first.datum.label);
-//    print(selectedDatum.first.datum.value);
 
     selectedAnalyticsDataLabel = selectedDatum.first.datum.label;
-    selectedAnalyticsData = selectedDatum.first.datum.value.toString();
-//    setState(() {});
+    selectedAnalyticsData = selectedDatum.first.datum.value.toString() + 'kWh';
+    setState(() {});
   }
 
   void grabAnalyticsBreakdown() async {
@@ -809,8 +884,8 @@ class _AnalyticPieDialogState extends State<AnalyticPieDialog> {
         data: chartData,
 
         // Set a label accessor to control the text of the arc label.
-        labelAccessorFn: (AnalyticsData row, _) =>
-            '${row.label} - ${row.value}',
+        labelAccessorFn: (AnalyticsData row, _) => '${row.label}',
+//        '${row.label} - ${row.value}',
       )
     ];
     setState(() {});

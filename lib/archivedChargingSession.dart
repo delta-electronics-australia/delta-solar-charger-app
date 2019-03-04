@@ -94,7 +94,7 @@ class ChargeSessionLine extends StatefulWidget {
 
   final chargerID;
   final startDate;
-  final startTime;
+  final String startTime;
 
   @override
   _ChargeSessionLineState createState() => _ChargeSessionLineState();
@@ -130,7 +130,7 @@ class _ChargeSessionLineState extends State<ChargeSessionLine> {
                 new ListTile(
                     title: new Center(
                         child: new Text(
-                  '${widget.chargerID}: ${widget.startDate} ${widget.startTime}',
+                  '${widget.chargerID}: ${widget.startDate} ${widget.startTime.substring(0, 2)}:${widget.startTime.substring(2, 4)}',
                   style: _headingFont,
                   textAlign: TextAlign.center,
                 ))),

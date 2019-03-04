@@ -14,612 +14,206 @@ import 'package:smart_charging_app/charger_info.dart';
 
 import 'package:fluttertoast/fluttertoast.dart';
 
-class SolarChargerSettings extends StatefulWidget {
-  @override
-  _SolarChargerSettingsState createState() => _SolarChargerSettingsState();
-}
-
-class _SolarChargerSettingsState extends State<SolarChargerSettings> {
-  final _headingFont = const TextStyle(fontSize: 22.0);
-  Map<String, String> chargingModeOptions = {
-    'Standalone: PV with Battery Backup': 'PV_with_BT',
-    'Standalone: Maximise EV Charge Rate': 'MAX_CHARGE_STANDALONE',
-    'BETA: PV Standalone without BT': 'PV_no_BT',
-    'Grid Connected: Maximise EV Charge Rate': 'MAX_CHARGE_GRID'
-  };
-  List<String> bufferAggressivenessOptions = [
-    'Aggressive',
-    'Balanced',
-    'Conservative',
-    'Ultra Conservative'
-  ];
-  Map<String, String> authenticationRequiredOptions = {
-    'RFID Swipe Required': 'true',
-    'RFID Swipe not Required': 'false'
-  };
-
-  String singleChargingMode;
-  String bufferAggroMode;
-  String authenticationRequired;
-
-  StreamSubscription _singleChargingModeSubscription;
-  StreamSubscription _bufferAggroModeSubscription;
-  StreamSubscription _authenticationRequiredSubscription;
-  StreamSubscription _versionSubscription;
-
-  bool checkingForUpdates = false;
-
-  /// firmwareWidget is the widget that will show up in the firmware updates card
-  Widget firmwareWidget;
-
-  /// _nameController is the TextEditingController for setting the nickname of the system
-  final TextEditingController _nameController = new TextEditingController();
-
-  /// _nameButtonDisabled is the boolean to see if the submit name button
-  /// should be enabled
-  bool _nameButtonDisabled = true;
-
-  String currentSystemName;
-
-  String get name => _nameController.text;
-
+class SolarChargerSettings extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return new Scaffold(
-      appBar: new AppBar(title: const Text('Delta Solar Charger Settings')),
-      drawer: new Drawer(
-          child: ListView(children: <Widget>[
-        globals.isAdmin
-            ? UserAccountsDrawerHeader(
-                accountName:
-                    Text('Currently logged in as ${globals.systemName}'),
-                decoration: new BoxDecoration(color: Colors.blue),
-              )
-            : UserAccountsDrawerHeader(
-                accountName: Text(globals.displayName),
-                accountEmail: Text(globals.displayEmail),
-                decoration: new BoxDecoration(color: Colors.blue),
-              ),
-        globals.isAdmin
-            ? ListView(
-                shrinkWrap: true,
-                physics: NeverScrollableScrollPhysics(),
-                children: <Widget>[
-                  ListTile(
-                    leading: const Icon(Icons.supervisor_account),
-                    title: const Text('Admin Dashboard'),
-                    onTap: () {
-                      Navigator.popUntil(
-                          context, ModalRoute.withName('/AdminDashboard'));
-                    },
-                  ),
-                  new Divider()
-                ],
-              )
-            : new Container(),
-        ListTile(
-          leading: const Icon(Icons.dashboard),
-          title: const Text('Dashboard'),
-          onTap: () {
-            Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.show_chart),
-          title: const Text('Live System Data'),
-          onTap: () {
-            var route = new MaterialPageRoute(
-                builder: (BuildContext context) => new DataStreamPage1());
-            Navigator.of(context).pop();
-            Navigator.of(context).push(route);
-          },
-        ),
-        Divider(),
-
-        ListTile(
-          leading: const Icon(Icons.unarchive),
-          title: const Text('System Archive'),
-          onTap: () {
-            var route = new MaterialPageRoute(
-                builder: (BuildContext context) => new InverterArchive());
-            Navigator.of(context).pop();
-            Navigator.of(context).push(route);
-          },
-        ),
-        ListTile(
-          leading: const Icon(Icons.offline_bolt),
-          title: const Text('Charging Session Archive'),
-          onTap: () {
-            var route = new MaterialPageRoute(
-                builder: (BuildContext context) => new ChargingArchive());
-            Navigator.of(context).pop();
-            Navigator.of(context).push(route);
-          },
-        ),
-//                  ListTile(
-//                    title: Text('Live Data Stream2'),
-//                    onTap: () {
-//                      var route = new MaterialPageRoute(
-//                          builder: (
-//                              BuildContext context) => new DataStreamPage());
-//                      Navigator.of(context).pop();
-//                      Navigator.of(context).push(route);
-//                    },
-//                  ),
-        Divider(),
-
-        ListTile(
-          leading: const Icon(Icons.power),
-          title: Text('Connected Chargers'),
-          onTap: () {
-            var route = new MaterialPageRoute(
-                builder: (BuildContext context) => new ChargerInfo());
-            Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
-            Navigator.of(context).push(route);
-          },
-        ),
-
-        Divider(),
-
-        ListTile(
-          leading: const Icon(Icons.settings),
-          title: Text('Change Solar Charging Settings'),
-          onTap: () {
-            var route = new MaterialPageRoute(
-                builder: (BuildContext context) => new SolarChargerSettings());
-            Navigator.of(context).pop();
-            Navigator.of(context).push(route);
-          },
-        ),
-        Divider(),
-        ListTile(
-          title: Text('Sign Out'),
-          onTap: _signOut,
-        ),
-      ])),
-      body: new Center(
-          child: new ListView(
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.all(3.0),
-            child: new Card(
-                child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: singleChargingMode != null
-                  ? new Column(
-                      children: <Widget>[
-                        new Text(
-                          'Charging Mode',
-                          style: _headingFont,
-                        ),
-                        new DropdownButton(
-                          // Need a List<DropdownMenu<String>>
-                          items: chargingModeOptions.keys
-                              .toList()
-                              .map((String chargingMode) {
-                            return new DropdownMenuItem<String>(
-                                child: Text(chargingMode),
-                                value: chargingModeOptions[chargingMode]);
-                          }).toList(),
-                          onChanged: chargingModeChanged,
-                          value: singleChargingMode,
-                        )
-                      ],
-                      mainAxisAlignment: MainAxisAlignment.center,
-                    )
-                  : new Center(
-                      child: const Center(
-                          child: const CircularProgressIndicator())),
-            )),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(3.0),
-            child: new Card(
-                child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: bufferAggroMode != null
-                  ? new Column(
-                      children: <Widget>[
-                        new Text(
-                          'Buffer Aggresiveness',
-                          style: _headingFont,
-                        ),
-                        new Text(
-                          'How aggressive should we be in using the battery? The more aggressive, the more the battery will be used in standalone mode',
-                          textAlign: TextAlign.center,
-                        ),
-                        new DropdownButton(
-                          items: bufferAggressivenessOptions
-                              .map((String bufferAggressiveness) {
-                            return new DropdownMenuItem<String>(
-                                child: Text(bufferAggressiveness),
-                                value: bufferAggressiveness);
-                          }).toList(),
-                          onChanged: bufferAggressivenessChanged,
-                          value: bufferAggroMode,
-                        ),
-                        new Text(
-                          'Note: This mode will only work during Standalone: PV with Battery Backup mode',
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    )
-                  : new Center(
-                      child: const Center(
-                          child: const CircularProgressIndicator())),
-            )),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(3.0),
-            child: new Card(
-                child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: authenticationRequired != null
-                  ? new Column(
-                      children: <Widget>[
-                        new Text(
-                          'Authentication Requirements',
-                          style: _headingFont,
-                        ),
-                        new Text(
-                          'Will the solar charger require a RFID card authentication?',
-                          textAlign: TextAlign.center,
-                        ),
-                        new DropdownButton(
-                          items: authenticationRequiredOptions.keys
-                              .toList()
-                              .map((String authenticationRequirement) {
-                            return new DropdownMenuItem<String>(
-                                child: Text(authenticationRequirement),
-                                value: authenticationRequiredOptions[
-                                    authenticationRequirement]);
-                          }).toList(),
-                          onChanged: authenticationRequiredChanged,
-                          value: authenticationRequired,
-                        ),
-                      ],
-                    )
-                  : new Center(
-                      child: const Center(
-                          child: const CircularProgressIndicator())),
-            )),
-          ),
-          new Padding(
-            padding: const EdgeInsets.all(3.0),
-            child: new Card(
-                child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: new Column(
-                children: <Widget>[
-                  new Text(
-                    'System Name',
-                    style: _headingFont,
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 5.0),
-                    child: new Text(
-                      'This name will be used to identify the system',
-                      style: null,
+        appBar: new AppBar(title: const Text('Delta Solar Charger Settings')),
+        drawer: new Drawer(
+            child: ListView(children: <Widget>[
+          globals.isAdmin
+              ? UserAccountsDrawerHeader(
+                  accountName:
+                      Text('Currently logged in as ${globals.systemName}'),
+                  decoration: new BoxDecoration(color: Colors.blue),
+                )
+              : UserAccountsDrawerHeader(
+                  accountName: Text(globals.displayName),
+                  accountEmail: Text(globals.displayEmail),
+                  decoration: new BoxDecoration(color: Colors.blue),
+                ),
+          globals.isAdmin
+              ? ListView(
+                  shrinkWrap: true,
+                  physics: NeverScrollableScrollPhysics(),
+                  children: <Widget>[
+                    ListTile(
+                      leading: const Icon(Icons.supervisor_account),
+                      title: const Text('Admin Dashboard'),
+                      onTap: () {
+                        Navigator.popUntil(
+                            context, ModalRoute.withName('/AdminDashboard'));
+                      },
                     ),
-                  ),
-                  Padding(
-                    key: new ObjectKey('systemName'),
-                    padding: const EdgeInsets.only(top: 5.0),
-                    child: new Text(
-                      'The current system name is: $currentSystemName',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  new ListTile(
-                      title: new TextField(
-                    controller: _nameController,
-                    decoration: new InputDecoration(
-                        hintText: "Enter a new system name"),
-                    onChanged: (text) {
-                      if (text == "") {
-                        _nameButtonDisabled = true;
-                      } else {
-                        _nameButtonDisabled = false;
-                      }
-                      setState(() {});
-                    },
-                  )),
-                  new RaisedButton(
-                    onPressed: _nameButtonDisabled
-                        ? null
-                        : () {
-                            _submitNameButtonPressed();
-                          },
-                    child: const Text('Submit new name'),
-                  )
-                ],
-              ),
-            )),
+                    new Divider()
+                  ],
+                )
+              : new Container(),
+          ListTile(
+            leading: const Icon(Icons.dashboard),
+            title: const Text('Dashboard'),
+            onTap: () {
+              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
+            },
           ),
-          new Divider(color: Colors.black),
-          new Padding(
-            padding: const EdgeInsets.all(3.0),
-            child: new Card(
-                child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: new Column(
-                children: <Widget>[
-                  new Text(
-                    'Firmware Updates',
-                    style: _headingFont,
-                  ),
-                  new Padding(
-                      padding: const EdgeInsets.all(15),
-                      child: !checkingForUpdates
-                          ? firmwareWidget
-                          : new Padding(
-                              child: new Center(
-                                  child: const Center(
-                                      child:
-                                          const CircularProgressIndicator())),
-                              padding: const EdgeInsets.all(10),
-                            ))
-                ],
-              ),
-            )),
+          ListTile(
+            leading: const Icon(Icons.show_chart),
+            title: const Text('Live System Data'),
+            onTap: () {
+              var route = new MaterialPageRoute(
+                  builder: (BuildContext context) => new DataStreamPage1());
+              Navigator.of(context).pop();
+              Navigator.of(context).push(route);
+            },
           ),
-          new Padding(
-            padding: const EdgeInsets.all(3.0),
-            child: new Card(
-                child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: new Column(
-                children: <Widget>[
-                  new Text(
-                    'Factory Reset',
-                    style: _headingFont,
-                  ),
-                  new Padding(
-                      padding: const EdgeInsets.all(15),
-                      child: !checkingForUpdates
-                          ? new RaisedButton(
-                              onPressed: () {
-                                showDialog(
-                                    context: context,
-                                    builder: (builder) {
-                                      return new FactoryReset();
-                                    });
-                              },
-                              child: const Text("Perform a factory reset"),
-                            )
-                          : new Padding(
-                              child: new Center(
-                                  child: const Center(
-                                      child:
-                                          const CircularProgressIndicator())),
-                              padding: const EdgeInsets.all(10),
-                            ))
-                ],
-              ),
-            )),
-          )
-        ],
-      )),
-    );
-  }
-
-  void updateDSCFirmware(uid, currentVersion) {
-    checkingForUpdates = true;
-    setState(() {});
-
-    /// 1) First send a Firebase message to do the firmware update
-    globals.database
-        .reference()
-        .child('users/${globals.uid}/evc_inputs/')
-        .update({'dsc_firmware_update': true});
-
-    /// 2) Then start a listener and listen for ranges in current version
-    _versionSubscription = globals.database
-        .reference()
-        .child('users/${globals.uid}/version')
-        .onValue
-        .listen((Event event) {
-      if (event.snapshot.value != currentVersion) {
-        /// If the version is now different, we display it on the UI
-        firmwareWidget = new Column(
+          Divider(),
+          ListTile(
+            leading: const Icon(Icons.unarchive),
+            title: const Text('System Archive'),
+            onTap: () {
+              var route = new MaterialPageRoute(
+                  builder: (BuildContext context) => new InverterArchive());
+              Navigator.of(context).pop();
+              Navigator.of(context).push(route);
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.offline_bolt),
+            title: const Text('Charging Session Archive'),
+            onTap: () {
+              var route = new MaterialPageRoute(
+                  builder: (BuildContext context) => new ChargingArchive());
+              Navigator.of(context).pop();
+              Navigator.of(context).push(route);
+            },
+          ),
+          Divider(),
+          ListTile(
+            leading: const Icon(Icons.power),
+            title: Text('Connected Chargers'),
+            onTap: () {
+              var route = new MaterialPageRoute(
+                  builder: (BuildContext context) => new ChargerInfo());
+              Navigator.popUntil(context, ModalRoute.withName('/Dashboard'));
+              Navigator.of(context).push(route);
+            },
+          ),
+          Divider(),
+          ListTile(
+            leading: const Icon(Icons.settings),
+            title: Text('Change Solar Charging Settings'),
+            onTap: () {
+              var route = new MaterialPageRoute(
+                  builder: (BuildContext context) =>
+                      new SolarChargerSettings());
+              Navigator.of(context).pop();
+              Navigator.of(context).push(route);
+            },
+          ),
+          Divider(),
+          ListTile(
+            title: Text('Sign Out'),
+            onTap: () {
+              _signOut(context);
+            },
+          ),
+        ])),
+        body: new ListView(
           children: <Widget>[
-            new Text('Current version: v${event.snapshot.value}'),
-            new Padding(padding: const EdgeInsets.only(top: 10)),
-            const Text('No update available')
-          ],
-        );
-        checkingForUpdates = false;
-        setState(() {});
-      }
-    });
-  }
-
-  void checkForUpdates() async {
-    /// This function checks for updates
-
-    checkingForUpdates = true;
-    setState(() {});
-
-    /// Get the latest version number
-    DataSnapshot latestVersionNumber =
-        await globals.database.reference().child('version').once();
-
-    /// Get the version number of the solar charger
-    DataSnapshot versionNumber = await globals.database
-        .reference()
-        .child('users/${globals.uid}/version')
-        .once();
-
-    if (latestVersionNumber.value > versionNumber.value) {
-      print('Update is available!');
-
-      firmwareWidget = new Column(
-        children: <Widget>[
-          new Text('Current version: v${versionNumber.value}'),
-          new FlatButton(
-              onPressed: () {
-                updateDSCFirmware(globals.uid, versionNumber.value);
+            new ListTile(
+              title: const Text('Charging Mode'),
+              leading: const Icon(Icons.battery_charging_full),
+              subtitle: const Text('Adjust EV Charging behaviour'),
+              onTap: () {
+                var route = new MaterialPageRoute(
+                    builder: (BuildContext context) => new ChargingModePage());
+                Navigator.of(context).push(route);
               },
-              child: new Text(
-                  'Update to v${latestVersionNumber.value} available. Click to continue'))
-        ],
-      );
-    } else {
-      firmwareWidget = new Column(
-        children: <Widget>[
-          new Text('Current version: v${versionNumber.value}'),
-          new Padding(padding: const EdgeInsets.only(top: 10)),
-          const Text('No update available')
-        ],
-      );
-      print('No updates available');
-    }
-
-    checkingForUpdates = false;
-    setState(() {});
+            ),
+            new ListTile(
+              title: const Text('Buffer Aggressiveness'),
+              leading: const Icon(Icons.battery_unknown),
+              subtitle: const Text('Control stationary battery usage'),
+              onTap: () {
+                var route = new MaterialPageRoute(
+                    builder: (BuildContext context) =>
+                        new BufferAggressivenessPage());
+                Navigator.of(context).push(route);
+              },
+            ),
+            new ListTile(
+              title: const Text('Charging Authentication'),
+              leading: const Icon(Icons.lock),
+              subtitle:
+                  const Text('Change charging authentication requirements'),
+              onTap: () {
+                var route = new MaterialPageRoute(
+                    builder: (BuildContext context) =>
+                        new ChargingAuthenticationPage());
+                Navigator.of(context).push(route);
+              },
+            ),
+            new Divider(),
+            new ListTile(
+              title: const Text('User Settings'),
+              leading: const Icon(Icons.person),
+              subtitle: const Text('Change your password, display name'),
+              onTap: () {
+                var route = new MaterialPageRoute(
+                    builder: (BuildContext context) => new UserSettingsPage());
+                Navigator.of(context).push(route);
+              },
+            ),
+            new ListTile(
+              title: const Text('System Name'),
+              leading: const Icon(Icons.contacts),
+              subtitle: const Text('Change the system name'),
+              onTap: () {
+                var route = new MaterialPageRoute(
+                    builder: (BuildContext context) => new SystemNamePage());
+                Navigator.of(context).push(route);
+              },
+            ),
+            new Divider(),
+            new ListTile(
+              title: const Text('Connection Settings'),
+              leading: const Icon(Icons.settings_ethernet),
+              subtitle: const Text(
+                  'Change how the Delta Solar Charger connects to the Internet'),
+              isThreeLine: true,
+              onTap: () {
+                var route = new MaterialPageRoute(
+                    builder: (BuildContext context) =>
+                        new ConnectionSettingsPage());
+                Navigator.of(context).push(route);
+              },
+            ),
+            new Divider(),
+            new ListTile(
+              title: const Text('Firmware Updates'),
+              leading: const Icon(Icons.system_update),
+              subtitle: const Text('Search for firmware updates'),
+              onTap: () {
+                var route = new MaterialPageRoute(
+                    builder: (BuildContext context) =>
+                        new UpdateFirmwarePage());
+                Navigator.of(context).push(route);
+              },
+            ),
+            new ListTile(
+              title: const Text('Factory Reset'),
+              leading: const Icon(Icons.restore),
+              subtitle: const Text('Reset your Delta Solar Charger'),
+            ),
+          ],
+        ));
   }
 
-  void _submitNameButtonPressed() async {
-    FocusScope.of(context).requestFocus(new FocusNode());
-
-    globals.database
-        .reference()
-        .child('users')
-        .child(globals.uid)
-        .child('user_info')
-        .update({'nickname': name});
-
-    _nameController.clear();
-    Fluttertoast.showToast(msg: 'System name changed!');
-  }
-
-  void getCurrentSystemName() async {
-    globals.database
-        .reference()
-        .child('users')
-        .child(globals.uid)
-        .child('user_info')
-        .child('nickname')
-        .onValue
-        .listen((Event event) {
-      /// Todo: needs work
-      DataSnapshot currentSystemNameSnapshot = event.snapshot;
-      if (currentSystemNameSnapshot.value == null) {
-        currentSystemName = 'No name currently set!';
-      } else {
-        print(currentSystemNameSnapshot.value);
-        currentSystemName = currentSystemNameSnapshot.value;
-      }
-
-      setState(() {});
-    });
-  }
-
-  void authenticationRequiredChanged(newAuthenticationRequirement) {
-    globals.database
-        .reference()
-        .child('users/${globals.uid}/evc_inputs/charging_modes')
-        .update({'authentication_required': newAuthenticationRequirement});
-
-    setState(() {
-      authenticationRequired = newAuthenticationRequirement;
-    });
-  }
-
-  void bufferAggressivenessChanged(newBufferAggressiveness) {
-    globals.database
-        .reference()
-        .child('users/${globals.uid}/evc_inputs/')
-        .update({'buffer_aggro_mode': newBufferAggressiveness});
-
-    setState(() {
-      bufferAggroMode = newBufferAggressiveness;
-    });
-  }
-
-  void chargingModeChanged(newChargingMode) {
-    globals.database
-        .reference()
-        .child('users/${globals.uid}/evc_inputs/charging_modes/')
-        .update({'single_charging_mode': newChargingMode});
-
-    setState(() {
-      singleChargingMode = newChargingMode;
-    });
-  }
-
-  void getEVInputs() async {
-    _singleChargingModeSubscription = globals.database
-        .reference()
-        .child(
-            'users/${globals.uid}/evc_inputs/charging_modes/single_charging_mode')
-        .onValue
-        .listen((Event event) {
-      singleChargingMode = event.snapshot.value;
-      setState(() {
-        print(singleChargingMode);
-      });
-    });
-
-    _bufferAggroModeSubscription = globals.database
-        .reference()
-        .child('users/${globals.uid}/evc_inputs/buffer_aggro_mode')
-        .onValue
-        .listen((Event event) {
-      bufferAggroMode = event.snapshot.value;
-      setState(() {
-        print(bufferAggroMode);
-      });
-    });
-
-    _authenticationRequiredSubscription = globals.database
-        .reference()
-        .child(
-            'users/${globals.uid}/evc_inputs/charging_modes/authentication_required')
-        .onValue
-        .listen((Event event) {
-      authenticationRequired = event.snapshot.value.toString();
-      setState(() {
-        print(authenticationRequired);
-      });
-    });
-
-    firmwareWidget = new RaisedButton(
-      onPressed: () {
-        checkForUpdates();
-      },
-      child: const Text("Check for Solar Charger firmware updates"),
-    );
-    setState(() {});
-  }
-
-  Future<Null> _signOut() async {
+  Future<Null> _signOut(context) async {
     await FirebaseAuth.instance.signOut();
     print('Signed out');
     Navigator.of(context)
         .pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
-  }
-
-  @override
-  void initState() {
-    super.initState();
-
-    getEVInputs();
-    getCurrentSystemName();
-  }
-
-  @override
-  void dispose() {
-    super.dispose();
-    _singleChargingModeSubscription.cancel();
-    _bufferAggroModeSubscription.cancel();
-    _authenticationRequiredSubscription.cancel();
-
-    if (_versionSubscription != null) {
-      _versionSubscription.cancel();
-    }
-
-    print('disposed');
   }
 }
 
@@ -747,5 +341,782 @@ class _FactoryResetState extends State<FactoryReset> {
     print('Signed out');
     Navigator.of(context)
         .pushNamedAndRemoveUntil('/', (Route<dynamic> route) => false);
+  }
+}
+
+class ChargingModePage extends StatefulWidget {
+  @override
+  _ChargingModePageState createState() => _ChargingModePageState();
+}
+
+class _ChargingModePageState extends State<ChargingModePage> {
+  String singleChargingMode;
+
+  StreamSubscription _singleChargingModeSubscription;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Charging Mode'),
+      ),
+      body: new ListView(
+        children: <Widget>[
+          new ListTile(
+            leading: new Radio(
+              groupValue: singleChargingMode,
+              value: 'PV_with_BT',
+              onChanged: _handleChargingModeChange,
+            ),
+            title: const Text('Solar Tracking Mode'),
+            subtitle: const Text(
+                'Intelligently adjust the charge rate based on the solar available'),
+            isThreeLine: true,
+            onTap: () {
+              _handleChargingModeChange('PV_with_BT');
+            },
+          ),
+          new ListTile(
+            leading: new Radio(
+              groupValue: singleChargingMode,
+              value: 'MAX_CHARGE_STANDALONE',
+              onChanged: _handleChargingModeChange,
+            ),
+            title: const Text('Maximise Standalone Power Mode'),
+            subtitle: const Text(
+                'Use as much solar and battery power as possible to charge the car'),
+            isThreeLine: true,
+            onTap: () {
+              _handleChargingModeChange('MAX_CHARGE_STANDALONE');
+            },
+          ),
+          new ListTile(
+            leading: new Radio(
+              groupValue: singleChargingMode,
+              value: 'MAX_CHARGE_GRID',
+              onChanged: _handleChargingModeChange,
+            ),
+            title: const Text('Quick Charge Mode'),
+            subtitle: const Text(
+                'Charge at the maximum rate possible no matter the cost'),
+            isThreeLine: true,
+            onTap: () {
+              _handleChargingModeChange('MAX_CHARGE_GRID');
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  _handleChargingModeChange(String newChargingMode) {
+    globals.database
+        .reference()
+        .child('users/${globals.uid}/evc_inputs/charging_modes/')
+        .update({'single_charging_mode': newChargingMode});
+
+    setState(() {});
+  }
+
+  startChargeModeListener() async {
+    _singleChargingModeSubscription = globals.database
+        .reference()
+        .child(
+            'users/${globals.uid}/evc_inputs/charging_modes/single_charging_mode')
+        .onValue
+        .listen((Event event) {
+      singleChargingMode = event.snapshot.value;
+      setState(() {});
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    startChargeModeListener();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _singleChargingModeSubscription.cancel();
+  }
+}
+
+class BufferAggressivenessPage extends StatefulWidget {
+  @override
+  _BufferAggressivenessPageState createState() =>
+      _BufferAggressivenessPageState();
+}
+
+class _BufferAggressivenessPageState extends State<BufferAggressivenessPage> {
+  String bufferAggroMode;
+
+  StreamSubscription _bufferAggroModeSubscription;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Charging Authentication'),
+      ),
+      body: new ListView(
+        children: <Widget>[
+          new ListTile(
+            leading: new Radio(
+              groupValue: bufferAggroMode,
+              value: 'Aggressive',
+              onChanged: _handleBufferAggressivenessChange,
+            ),
+            title: const Text('Aggressive Battery Use'),
+            subtitle: const Text('Use an aggressive battery profile'),
+            onTap: () {
+              _handleBufferAggressivenessChange('Aggressive');
+            },
+          ),
+          new ListTile(
+            leading: new Radio(
+              groupValue: bufferAggroMode,
+              value: 'Balanced',
+              onChanged: _handleBufferAggressivenessChange,
+            ),
+            title: const Text('Balanced Battery Use'),
+            subtitle: const Text('Use a balanced battery profile'),
+            onTap: () {
+              _handleBufferAggressivenessChange('Balanced');
+            },
+          ),
+          new ListTile(
+            leading: new Radio(
+              groupValue: bufferAggroMode,
+              value: 'Conservative',
+              onChanged: _handleBufferAggressivenessChange,
+            ),
+            title: const Text('Conservative Battery Use'),
+            subtitle: const Text('Use a conservative battery profile'),
+            onTap: () {
+              _handleBufferAggressivenessChange('Conservative');
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  _handleBufferAggressivenessChange(newBufferAggressiveness) {
+    globals.database
+        .reference()
+        .child('users/${globals.uid}/evc_inputs/')
+        .update({'buffer_aggro_mode': newBufferAggressiveness});
+
+    setState(() {});
+  }
+
+  startBufferAggressivenessListener() {
+    _bufferAggroModeSubscription = globals.database
+        .reference()
+        .child('users/${globals.uid}/evc_inputs/buffer_aggro_mode')
+        .onValue
+        .listen((Event event) {
+      bufferAggroMode = event.snapshot.value;
+      setState(() {});
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    startBufferAggressivenessListener();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _bufferAggroModeSubscription.cancel();
+  }
+}
+
+class ChargingAuthenticationPage extends StatefulWidget {
+  @override
+  _ChargingAuthenticationPageState createState() =>
+      _ChargingAuthenticationPageState();
+}
+
+class _ChargingAuthenticationPageState
+    extends State<ChargingAuthenticationPage> {
+  String authenticationRequired;
+
+  StreamSubscription _authenticationRequiredSubscription;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Charging Authentication'),
+      ),
+      body: new ListView(
+        children: <Widget>[
+          new ListTile(
+            leading: new Radio(
+              groupValue: authenticationRequired,
+              value: 'true',
+              onChanged: _handleAuthenticationRequiredChange,
+            ),
+            title: const Text('RFID Swipe Required'),
+            subtitle: const Text(
+                'Users need to swipe an RFID card to start a charge session'),
+            isThreeLine: true,
+            onTap: () {
+              _handleAuthenticationRequiredChange('true');
+            },
+          ),
+          new ListTile(
+            leading: new Radio(
+              groupValue: authenticationRequired,
+              value: 'false',
+              onChanged: _handleAuthenticationRequiredChange,
+            ),
+            title: const Text('RFID Swipe Not Required'),
+            subtitle: const Text(
+                'The Delta Solar Charger will start charging as soon as a car is plugged in'),
+            isThreeLine: true,
+            onTap: () {
+              _handleAuthenticationRequiredChange('false');
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  _handleAuthenticationRequiredChange(newAuthenticationRequirement) {
+    globals.database
+        .reference()
+        .child('users/${globals.uid}/evc_inputs/charging_modes')
+        .update({'authentication_required': newAuthenticationRequirement});
+
+    setState(() {});
+  }
+
+  startAuthenticationRequiredListener() {
+    _authenticationRequiredSubscription = globals.database
+        .reference()
+        .child(
+            'users/${globals.uid}/evc_inputs/charging_modes/authentication_required')
+        .onValue
+        .listen((Event event) {
+      authenticationRequired = event.snapshot.value.toString();
+      setState(() {});
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    startAuthenticationRequiredListener();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _authenticationRequiredSubscription.cancel();
+  }
+}
+
+class UserSettingsPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return new Scaffold(
+      appBar: new AppBar(
+        title: const Text('User Settings'),
+      ),
+      body: new ListView(
+        children: <Widget>[
+          new ListTile(
+            title: const Text('Change Display Name'),
+            onTap: () {
+              showDialog(
+                  context: context,
+                  builder: (builder) {
+                    return new ChangeDisplayNameDialog();
+                  });
+            },
+          ),
+          new ListTile(
+            title: const Text('Change Password'),
+            onTap: () {
+              showDialog(
+                  context: context,
+                  builder: (builder) {
+                    return new ChangePasswordDialog();
+                  });
+            },
+          )
+        ],
+      ),
+    );
+  }
+}
+
+class ChangeDisplayNameDialog extends StatefulWidget {
+  @override
+  _ChangeDisplayNameDialogState createState() =>
+      _ChangeDisplayNameDialogState();
+}
+
+class _ChangeDisplayNameDialogState extends State<ChangeDisplayNameDialog> {
+  @override
+  Widget build(BuildContext context) {
+    return SimpleDialog(
+      title: const Text('Change Display Name'),
+      children: <Widget>[
+        const Text(
+          'Functionality currently not available',
+          textAlign: TextAlign.center,
+        )
+      ],
+    );
+  }
+}
+
+class ChangePasswordDialog extends StatefulWidget {
+  @override
+  _ChangePasswordDialogState createState() => _ChangePasswordDialogState();
+}
+
+class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
+  final TextEditingController _oldPass = new TextEditingController();
+  final TextEditingController _newPass = new TextEditingController();
+  final TextEditingController _confirmNewPass = new TextEditingController();
+
+  UserAuth userAuth = new UserAuth();
+
+  String get oldPassword => _oldPass.text;
+
+  String get newPassword => _newPass.text;
+
+  String get confirmNewPassword => _confirmNewPass.text;
+
+  @override
+  Widget build(BuildContext context) {
+    return SimpleDialog(
+      title: const Text('Change Password'),
+      children: <Widget>[
+        const Text(
+          'Functionality currently not available',
+          textAlign: TextAlign.center,
+        )
+//        new ListTile(
+//          leading: const Text('Old Password:'),
+//            title: new TextField(
+//          controller: _oldPass,
+//          decoration: new InputDecoration(),
+//          obscureText: true,
+//        )),
+//        new ListTile(
+//            leading: const Text('New Password:'),
+//            title: new TextField(
+//          controller: _newPass,
+//          decoration: new InputDecoration(hintText: "New Password"),
+//          obscureText: true,
+//        )),
+//        new ListTile(
+//            leading: const Text('Confirm Password:'),
+//            title: new TextField(
+//          controller: _confirmNewPass,
+//          decoration: new InputDecoration(hintText: "Confirm New Password"),
+//          obscureText: true,
+//        )),
+//        new Padding(
+//          padding: const EdgeInsets.all(15.0),
+//          child: new RaisedButton(
+//            child: new Text("Change Password"),
+//            onPressed: changePasswordButtonPressed,
+//          ),
+//        ),
+      ],
+    );
+  }
+
+  void changePasswordButtonPressed() {
+    /// First we need to check if our original password is correct
+    FirebaseAuth.instance.currentUser().then((FirebaseUser user) {
+      /// First get the
+      String email = user.email;
+    });
+  }
+
+  void checkIfPWChangeAllowed() async {
+    /// This function will check if we are allowed to change the password
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    checkIfPWChangeAllowed();
+  }
+}
+
+class SystemNamePage extends StatefulWidget {
+  @override
+  _SystemNamePageState createState() => _SystemNamePageState();
+}
+
+class _SystemNamePageState extends State<SystemNamePage> {
+  /// _nameController is the TextEditingController for setting the nickname of the system
+  final TextEditingController _nameController = new TextEditingController();
+
+  /// _nameButtonDisabled is the boolean to see if the submit name button
+  /// should be enabled
+  bool _nameButtonDisabled = true;
+  String currentSystemName;
+
+  String get name => _nameController.text;
+
+  @override
+  Widget build(BuildContext context) {
+    return new Scaffold(
+      appBar: new AppBar(
+        title: const Text('System Name'),
+      ),
+      body: new Column(
+        children: <Widget>[
+          Padding(
+            key: new ObjectKey('systemName'),
+            padding: const EdgeInsets.only(top: 10.0),
+            child: new Text(
+              'The current system name is: $currentSystemName',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+            ),
+          ),
+          new ListTile(
+              title: new TextField(
+            controller: _nameController,
+            decoration:
+                new InputDecoration(hintText: "Enter a new system name"),
+            onChanged: (text) {
+              if (text == "") {
+                _nameButtonDisabled = true;
+              } else {
+                _nameButtonDisabled = false;
+              }
+              setState(() {});
+            },
+          )),
+          new RaisedButton(
+            onPressed: _nameButtonDisabled
+                ? null
+                : () {
+                    _submitNameButtonPressed();
+                  },
+            child: const Text('Submit new name'),
+          )
+        ],
+      ),
+    );
+  }
+
+  void _submitNameButtonPressed() async {
+    FocusScope.of(context).requestFocus(new FocusNode());
+
+    globals.database
+        .reference()
+        .child('users')
+        .child(globals.uid)
+        .child('user_info')
+        .update({'nickname': name});
+
+    _nameController.clear();
+    Fluttertoast.showToast(msg: 'System name changed!');
+  }
+
+  void getCurrentSystemName() async {
+    globals.database
+        .reference()
+        .child('users')
+        .child(globals.uid)
+        .child('user_info')
+        .child('nickname')
+        .onValue
+        .listen((Event event) {
+      /// Todo: needs work
+      DataSnapshot currentSystemNameSnapshot = event.snapshot;
+      if (currentSystemNameSnapshot.value == null) {
+        currentSystemName = 'No name currently set!';
+      } else {
+        print(currentSystemNameSnapshot.value);
+        currentSystemName = currentSystemNameSnapshot.value;
+      }
+
+      setState(() {});
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    getCurrentSystemName();
+  }
+}
+
+class ConnectionSettingsPage extends StatefulWidget {
+  @override
+  _ConnectionSettingsPageState createState() => _ConnectionSettingsPageState();
+}
+
+class _ConnectionSettingsPageState extends State<ConnectionSettingsPage> {
+  String connectionMethod;
+
+  @override
+  Widget build(BuildContext context) {
+    return new Scaffold(
+      appBar: new AppBar(
+        title: const Text('Connection Settings'),
+      ),
+      body: new Column(
+        children: <Widget>[
+          new ListTile(
+            leading: new Radio(
+              groupValue: connectionMethod,
+              value: 'none',
+              onChanged: _handleConnectionMethodChange,
+            ),
+            title: const Text('Run Solar Charger Offline'),
+            subtitle: const Text(
+                'The Delta Solar Charger will run completely offline. Users will no longer have access to the app and web interface'),
+            isThreeLine: true,
+            onTap: () {
+              _handleConnectionMethodChange('none');
+            },
+          ),
+          new ListTile(
+            leading: new Radio(
+              groupValue: connectionMethod,
+              value: 'ethernet',
+              onChanged: _handleConnectionMethodChange,
+            ),
+            title: const Text('Ethernet Connection'),
+            subtitle: const Text(
+                'The Delta Solar Charger will use an ethernet connection to connect to the internet'),
+            isThreeLine: true,
+            onTap: () {
+              _handleConnectionMethodChange('ethernet');
+            },
+          ),
+          new ListTile(
+            leading: new Radio(
+              groupValue: connectionMethod,
+              value: '3g',
+              onChanged: _handleConnectionMethodChange,
+            ),
+            title: const Text('3G/4G Connection'),
+            subtitle: const Text(
+                'The Delta Solar Charger will use a 3G connection to connect to the internet'),
+            isThreeLine: true,
+            onTap: () {
+              _handleConnectionMethodChange('3g');
+            },
+          ),
+          new Expanded(
+              child: Padding(
+            padding: const EdgeInsets.all(15.0),
+            child: new Align(
+              alignment: Alignment.bottomRight,
+              child: new RaisedButton(
+                onPressed: null,
+                child: const Text('Confirm new connection method'),
+              ),
+            ),
+          ))
+        ],
+      ),
+    );
+  }
+
+  _handleConnectionMethodChange(String newConnectionMethod) {
+    print(newConnectionMethod);
+    connectionMethod = newConnectionMethod;
+    setState(() {});
+  }
+}
+
+class UpdateFirmwarePage extends StatefulWidget {
+  @override
+  _UpdateFirmwarePageState createState() => _UpdateFirmwarePageState();
+}
+
+class _UpdateFirmwarePageState extends State<UpdateFirmwarePage> {
+  bool checkingForUpdates = true;
+
+  num currentVersion;
+
+  Widget firmwareStatusTitle = const Text('Checking for updates');
+  Widget firmwareStatusList;
+  Widget multiPurposeFirmwareButton;
+
+  StreamSubscription _versionSubscription;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: new AppBar(
+        title: const Text('Firmware Updates'),
+      ),
+      body: new Column(
+        children: <Widget>[
+          /// First show a system update logo
+          Center(
+            child: new SizedBox(
+                height: MediaQuery.of(context).size.height / 7,
+                child: new Icon(
+                  Icons.system_update,
+                  size: MediaQuery.of(context).size.width / 6,
+                )),
+          ),
+
+          /// firmwareStatusTitle will be the text at the top that tells us the
+          /// status of the current firmware
+          firmwareStatusTitle,
+
+          /// Now either show a progress indicator or a list of firmware info
+          checkingForUpdates
+              ? new Expanded(
+                  child: new Center(
+                      child: const Center(
+                          child: const CircularProgressIndicator())),
+                )
+              : new Expanded(child: firmwareStatusList),
+
+          /// At the bottom of the page, we show nothing if we are checking for
+          /// updates but show a customized button if we are not checking
+          new Expanded(
+              child: Padding(
+            padding: const EdgeInsets.all(15.0),
+            child: Align(
+                child: checkingForUpdates
+                    ? new Container()
+                    : multiPurposeFirmwareButton,
+                alignment: Alignment.bottomRight),
+          ))
+        ],
+      ),
+    );
+  }
+
+  void updateDSCFirmware(uid, currentVersion) {
+    checkingForUpdates = true;
+    setState(() {});
+
+//    /// 1) First send a Firebase message to do the firmware update
+//    globals.database
+//        .reference()
+//        .child('users/${globals.uid}/evc_inputs/')
+//        .update({'dsc_firmware_update': true});
+
+    /// 2) Then start a listener and listen for ranges in current version
+    _versionSubscription = globals.database
+        .reference()
+        .child('users/${globals.uid}/version')
+        .onValue
+        .listen((Event event) {
+      if (event.snapshot.value != currentVersion) {
+        /// If the version is now different, we display it on the UI
+
+        checkForUpdates();
+      }
+    });
+  }
+
+  void checkForUpdates() async {
+    checkingForUpdates = true;
+    firmwareStatusTitle = const Text(
+      'Checking for updates',
+      style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+    );
+    setState(() {});
+
+    /// Get the latest version number
+    DataSnapshot latestVersionNumber =
+        await globals.database.reference().child('version').once();
+
+    /// Get the version number of the solar charger
+    DataSnapshot versionNumber = await globals.database
+        .reference()
+        .child('users/${globals.uid}/version')
+        .once();
+
+    if (latestVersionNumber.value > versionNumber.value) {
+      /// Update our firmwareStatusTitle
+      firmwareStatusTitle = const Text(
+        'Firmware Update Available',
+        style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+      );
+
+      /// Update the firmware button
+      multiPurposeFirmwareButton = new RaisedButton(
+        onPressed: () {
+          updateDSCFirmware(globals.uid, versionNumber.value);
+        },
+        child: const Text('Perform Firmware Update'),
+      );
+
+      firmwareStatusList = new ListView(
+        shrinkWrap: true,
+        physics: NeverScrollableScrollPhysics(),
+        children: <Widget>[
+          new ListTile(
+            title: new Text(
+                'Current Delta Solar Charger version: ${versionNumber.value}'),
+          ),
+          new ListTile(
+            title: new Text(
+                'Latest Delta Solar Charger version: ${latestVersionNumber.value}'),
+          )
+        ],
+      );
+
+      setState(() {});
+    } else {
+      print('No updates available');
+
+      /// Assign our firmwareStatusTitle
+      firmwareStatusTitle = new Padding(
+        padding: const EdgeInsets.only(bottom: 15),
+        child: const Text(
+          'Your system is up to date',
+          style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+        ),
+      );
+
+      /// Assign our firmwareStatusList
+      firmwareStatusList = new ListTile(
+          title:
+              new Text('Delta Solar Charger version: ${versionNumber.value}'));
+
+      multiPurposeFirmwareButton = new RaisedButton(
+        onPressed: () {
+          checkForUpdates();
+        },
+        child: const Text('Check for updates'),
+      );
+    }
+
+    checkingForUpdates = false;
+    setState(() {});
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    checkForUpdates();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+
+    if (_versionSubscription != null) {
+      _versionSubscription.cancel();
+    }
   }
 }
