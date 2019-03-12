@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:smart_charging_app/authenticate.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'dart:io' show Platform;
 
 import 'dart:io';
@@ -730,7 +732,7 @@ class _SendWiFiPayloadAndroidState extends State<SendWiFiPayloadAndroid> {
     );
   }
 
-  transmitWifiData() async {
+  transmitWifiData(String ssid) async {
     /// Now that we are connected, we can now send the payload to the controller
 
     print('Connected to the Solar Charger. Transmitting data now...');
@@ -747,7 +749,29 @@ class _SendWiFiPayloadAndroidState extends State<SendWiFiPayloadAndroid> {
       if (transmissionSuccess == true) {
         print('Initialization complete!');
 
-//        WiFiForIoTPlugin.disconnect();
+        // Todo: ALL OF THIS NEEDS TESTING!
+        /// Now that initialization is complete, let's forget the Wi-Fi network
+        await WiFiForIoTPlugin.removeWifiNetwork(ssid);
+
+        /// We also have to initialize a node in Firebase with the uid if we chose offline mode
+        final FirebaseAuth _auth = FirebaseAuth.instance;
+        try {
+          /// First sign in to our new account
+          FirebaseUser user = await _auth.signInWithEmailAndPassword(
+              email: widget.firebaseEmail, password: widget.firebasePassword);
+
+          /// Then update our connectivity node inside the uid
+          FirebaseDatabase db = new FirebaseDatabase();
+          await db
+              .reference()
+              .child('users/${user.uid}/')
+              .update({'connectivity': widget.connectionMethod});
+
+          /// Then log out of the account
+          await _auth.signOut();
+        } catch (e) {
+          return e.message;
+        }
 
         setState(() {
           processCompleted = true;
@@ -812,7 +836,7 @@ class _SendWiFiPayloadAndroidState extends State<SendWiFiPayloadAndroid> {
 
     if (wifiConnectionResult) {
       await new Future.delayed(const Duration(seconds: 5));
-      transmitWifiData();
+      transmitWifiData(ssid);
     } else {
       setState(() {
         progressIcon = Icons.signal_wifi_off;
