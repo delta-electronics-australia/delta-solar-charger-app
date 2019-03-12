@@ -906,7 +906,7 @@ class _ConnectionSettingsPageState extends State<ConnectionSettingsPage> {
           new ListTile(
             leading: new Radio(
               groupValue: connectionMethod,
-              value: '3g',
+              value: '3G',
               onChanged: _handleConnectionMethodChange,
             ),
             title: const Text('3G/4G Connection'),
@@ -914,7 +914,7 @@ class _ConnectionSettingsPageState extends State<ConnectionSettingsPage> {
                 'The Delta Solar Charger will use a 3G connection to connect to the internet'),
             isThreeLine: true,
             onTap: () {
-              _handleConnectionMethodChange('3g');
+              _handleConnectionMethodChange('3G');
             },
           ),
           new Expanded(
@@ -1007,11 +1007,11 @@ class _UpdateFirmwarePageState extends State<UpdateFirmwarePage> {
     checkingForUpdates = true;
     setState(() {});
 
-//    /// 1) First send a Firebase message to do the firmware update
-//    globals.database
-//        .reference()
-//        .child('users/${globals.uid}/evc_inputs/')
-//        .update({'dsc_firmware_update': true});
+    /// 1) First send a Firebase message to do the firmware update
+    globals.database
+        .reference()
+        .child('users/${globals.uid}/evc_inputs/')
+        .update({'dsc_firmware_update': true});
 
     /// 2) Then start a listener and listen for ranges in current version
     _versionSubscription = globals.database
@@ -1045,6 +1045,8 @@ class _UpdateFirmwarePageState extends State<UpdateFirmwarePage> {
         .child('users/${globals.uid}/version')
         .once();
 
+    print(latestVersionNumber.value);
+    print(versionNumber.value);
     if (latestVersionNumber.value > versionNumber.value) {
       /// Update our firmwareStatusTitle
       firmwareStatusTitle = const Text(
